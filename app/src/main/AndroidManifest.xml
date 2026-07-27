@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 우리 앱 자신의 위험 알림을 띄우기 위한 표준 런타임 권한 (Android 13+). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+        의도적으로 없는 것들:
+        - READ_CALL_LOG, RECEIVE_SMS/READ_SMS: 기본 전화/문자 앱 자격이 없으면 Play 심사를 통과 못함
+        - MANAGE_EXTERNAL_STORAGE, READ_MEDIA_AUDIO: SAF 트리 권한으로 대체, 저장소 권한 자체가 불필요
+    -->
+
+    <application
+        android:name=".ProtoApplication"
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Proto">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            SMS·카톡 공용 캡처 채널. BIND_NOTIFICATION_LISTENER_SERVICE 는 앱이 요청하는 게 아니라
+            사용자가 시스템 설정의 "알림 접근"에서 직접 켜야 바인딩된다.
+        -->
+        <service
+            android:name=".capture.NotificationCaptureService"
+            android:exported="true"
+            android:label="@string/notification_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+    </application>
+
+</manifest>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Proto</string>
+    <string name="notification_service_label">피싱 의심 알림 캡처</string>
+</resources>
