@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     // AGP 9 부터 Kotlin 지원이 내장이라 kotlin.android 플러그인은 적용하지 않는다.
     alias(libs.plugins.android.application)
@@ -15,6 +17,12 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        // local.properties에서 직접 읽는다 — project.findProperty()는 local.properties를 못 읽음.
+        val localProps = Properties()
+        val localFile = rootProject.file("local.properties")
+        if (localFile.exists()) localFile.inputStream().use { localProps.load(it) }
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProps["GEMINI_API_KEY"] ?: ""}\"")
+        buildConfigField("String", "GROQ_API_KEY", "\"${localProps["GROQ_API_KEY"] ?: ""}\"")
     }
 
     buildTypes {
@@ -33,6 +41,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 }

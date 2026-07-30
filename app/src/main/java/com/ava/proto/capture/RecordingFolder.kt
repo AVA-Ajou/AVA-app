@@ -6,9 +6,26 @@ import android.net.Uri
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import androidx.documentfile.provider.DocumentFile.fromTreeUri
+import android.provider.DocumentsContract
 
 private const val PREFS = "proto_prefs"
 private const val KEY_TREE_URI = "recording_folder_uri"
+
+/**
+ * 삼성 갤럭시 통화 녹음 파일명 패턴 (One UI 기준).
+ *
+ * 저장 경로: 내부저장소/Recordings/Call/
+ * 파일명 형식: "Call recording_YYYYMMDD_HHMMSS.m4a"
+ *   예시: Call recording_20241201_143022.m4a
+ *
+ * 한국어 기기 설정에서는 "통화 녹음_YYYYMMDD_HHMMSS.m4a" 형태가 나올 수 있어
+ * 두 패턴을 모두 허용한다. 구분자는 언더스코어(_) 또는 공백 모두 허용.
+ */
+private val SAMSUNG_CALL_RECORDING = Regex(
+    """^(Call recording|통화[ _]?녹음)[_ ]\d{8}[_ ]\d{6}.*\.m4a$""",
+    RegexOption.IGNORE_CASE,
+)
 
 /**
  * 사용자가 SAF로 지정한 통화 녹음 폴더를 관리한다.
@@ -47,10 +64,28 @@ object RecordingFolder {
         val treeUri = get(context) ?: return emptyList()
         val folder = DocumentFile.fromTreeUri(context, treeUri) ?: return emptyList()
         return folder.listFiles()
-            .filter { it.isFile && identityOf(it) !in alreadyProcessedNames }
+            .filter { it.isFile && isSamsungCallRecording(it.name) && identityOf(it) !in alreadyProcessedNames }
             .sortedBy { it.lastModified() }
     }
 
     /** 파일명이 없는 드문 경우를 대비해 URI를 대신 쓴다 — dedup 판별과 기록에 항상 같은 값을 쓴다. */
     fun identityOf(file: DocumentFile): String = file.name ?: file.uri.toString()
+
+    /** 삼성 갤럭시 통화 녹음 파일명인지 확인한다. null(이름 없음)은 false. */
+    fun isSamsungCallRecording(name: String?): Boolean =
+        name != null && SAMSUNG_CALL_RECORDING.matches(name)
+
+    /**
+     * SAF tree URI를 실제 파일시스템 경로로 변환한다.
+     * FileObserver는 URI가 아닌 실제 경로가 필요하므로 여기서 변환한다.
+     * primary 볼륨(내부저장소)만 지원하며, SD카드 등 외부 볼륨은 null을 반환한다.
+     */
+    fun getAsPath(context: Context): String? {
+        val treeUri = get(context) ?: return null
+        val docId = runCatching { DocumentsContract.getTreeDocumentId(treeUri) }.getOrNull() ?: return null
+        val parts = docId.split(":")
+        if (parts.size != 2) return null
+        val (volume, relativePath) = parts
+        return if (volume == "primary") "/storage/emulated/0/$relativePath" else null
+    }
 }

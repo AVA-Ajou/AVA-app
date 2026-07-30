@@ -43,8 +43,13 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val app = context.applicationContext as ProtoApplication
 
-                val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(app.database))
+                val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(app.database, app.demoInjector, context))
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val isBusy by viewModel.isBusy.collectAsStateWithLifecycle()
+                val callDemoStep by viewModel.callDemoStep.collectAsStateWithLifecycle()
+                val callDemoResult by viewModel.callDemoResult.collectAsStateWithLifecycle()
+                val autoTestRunning by viewModel.autoTestRunning.collectAsStateWithLifecycle()
+                val autoTestStatus by viewModel.autoTestStatus.collectAsStateWithLifecycle()
 
                 var folderUri by remember { mutableStateOf(RecordingFolder.get(context)) }
                 val notificationAccessGranted by rememberNotificationAccessGranted()
@@ -55,6 +60,7 @@ class MainActivity : ComponentActivity() {
                     if (uri != null) {
                         RecordingFolder.save(context, uri)
                         folderUri = uri
+                        app.restartWatcher()
                     }
                 }
 
@@ -73,10 +79,23 @@ class MainActivity : ComponentActivity() {
                     recordingFolderUri = folderUri,
                     notificationAccessGranted = notificationAccessGranted,
                     defaultSmsPackage = TargetPackages.defaultSmsPackage(context),
+                    isBusy = isBusy,
+                    callDemoStep = callDemoStep,
+                    callDemoResult = callDemoResult,
+                    autoTestRunning = autoTestRunning,
+                    autoTestStatus = autoTestStatus,
                     onConnectFolder = { folderPicker.launch(null) },
                     onOpenNotificationAccessSettings = {
                         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     },
+                    onScanNow = viewModel::scanNow,
+                    onDemoKakao = viewModel::demoKakao,
+                    onDemoSms = viewModel::demoSms,
+                    onDemoCall = viewModel::demoCall,
+                    onCancelCallDemo = viewModel::cancelCallDemo,
+                    onStartAutoTestKakao = { viewModel.startAutoTest(isKakao = true) },
+                    onStartAutoTestSms = { viewModel.startAutoTest(isKakao = false) },
+                    onStopAutoTest = viewModel::stopAutoTest,
                 )
             }
         }

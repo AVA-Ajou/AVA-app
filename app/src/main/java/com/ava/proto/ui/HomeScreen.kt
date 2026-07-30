@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -24,8 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ava.proto.data.EventEntity
 import com.ava.proto.data.RiskSignal
-import com.ava.proto.data.SessionEntity
-import com.ava.proto.data.SessionState
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -38,8 +38,21 @@ fun HomeScreen(
     recordingFolderUri: Uri?,
     notificationAccessGranted: Boolean,
     defaultSmsPackage: String?,
+    isBusy: Boolean,
+    callDemoStep: CallDemoStep,
+    callDemoResult: CallDemoResult?,
+    autoTestRunning: Boolean,
+    autoTestStatus: String,
     onConnectFolder: () -> Unit,
     onOpenNotificationAccessSettings: () -> Unit,
+    onScanNow: () -> Unit,
+    onDemoKakao: () -> Unit,
+    onDemoSms: () -> Unit,
+    onDemoCall: () -> Unit,
+    onCancelCallDemo: () -> Unit,
+    onStartAutoTestKakao: () -> Unit,
+    onStartAutoTestSms: () -> Unit,
+    onStopAutoTest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
@@ -62,24 +75,173 @@ fun HomeScreen(
                 defaultSmsPackage = defaultSmsPackage,
                 onConnectFolder = onConnectFolder,
                 onOpenNotificationAccessSettings = onOpenNotificationAccessSettings,
+                onScanNow = onScanNow,
             )
 
             HorizontalDivider()
 
-            Text("세션 (${uiState.sessions.size})", style = MaterialTheme.typography.titleMedium)
-            if (uiState.sessions.isEmpty()) {
-                Text(
-                    "아직 위험 신호가 감지된 세션이 없습니다.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            uiState.sessions.forEach { SessionCard(it) }
+            DemoSection(
+                isBusy = isBusy,
+                callDemoStep = callDemoStep,
+                callDemoResult = callDemoResult,
+                hasFolderConnected = recordingFolderUri != null,
+                autoTestRunning = autoTestRunning,
+                autoTestStatus = autoTestStatus,
+                onDemoKakao = onDemoKakao,
+                onDemoSms = onDemoSms,
+                onDemoCall = onDemoCall,
+                onCancelCallDemo = onCancelCallDemo,
+                onStartAutoTestKakao = onStartAutoTestKakao,
+                onStartAutoTestSms = onStartAutoTestSms,
+                onStopAutoTest = onStopAutoTest,
+            )
 
             HorizontalDivider()
 
             Text("최근 이벤트 (${uiState.events.size})", style = MaterialTheme.typography.titleMedium)
             uiState.events.forEach { EventRow(it) }
+        }
+    }
+}
+
+@Composable
+private fun DemoSection(
+    isBusy: Boolean,
+    callDemoStep: CallDemoStep,
+    callDemoResult: CallDemoResult?,
+    hasFolderConnected: Boolean,
+    autoTestRunning: Boolean,
+    autoTestStatus: String,
+    onDemoKakao: () -> Unit,
+    onDemoSms: () -> Unit,
+    onDemoCall: () -> Unit,
+    onCancelCallDemo: () -> Unit,
+    onStartAutoTestKakao: () -> Unit,
+    onStartAutoTestSms: () -> Unit,
+    onStopAutoTest: () -> Unit,
+) {
+    val callBusy = callDemoStep != CallDemoStep.IDLE
+
+    Text("채널별 데모", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "버튼을 누르면 해당 채널로 피싱 신호가 들어온 것을 시뮬레이션합니다.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Button(
+            onClick = onDemoKakao,
+            enabled = !isBusy,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("카카오톡", style = MaterialTheme.typography.labelMedium)
+        }
+        Button(
+            onClick = onDemoSms,
+            enabled = !isBusy,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("SMS", style = MaterialTheme.typography.labelMedium)
+        }
+        Button(
+            onClick = onDemoCall,
+            enabled = !isBusy && !callBusy,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.tertiary,
+            ),
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("통화 녹음", style = MaterialTheme.typography.labelMedium)
+        }
+    }
+
+    // 통화 녹음 진행 상태 표시
+    when (callDemoStep) {
+        CallDemoStep.COPYING -> {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                "음성 파일 복사 중...",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        CallDemoStep.ANALYZING -> {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "AI가 녹음을 분석 중... (수 초~수십 초 소요)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                OutlinedButton(onClick = onCancelCallDemo) {
+                    Text("중단", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        CallDemoStep.IDLE -> {}
+    }
+
+    if (callDemoResult == CallDemoResult.NO_FOLDER) {
+        Text(
+            "녹음 폴더가 연결되지 않았습니다. 위에서 폴더를 먼저 연결해주세요.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+
+    // ── 오탐 검증: 정상 ↔ 피싱 자동 순환 ───────────────────────────────────
+    HorizontalDivider()
+    Text("오탐 검증 (자동 순환)", style = MaterialTheme.typography.titleSmall)
+    Text(
+        "정상 메시지와 피싱 메시지를 번갈아 발송해 오탐/미탐을 확인합니다.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    if (!autoTestRunning) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            OutlinedButton(
+                onClick = onStartAutoTestKakao,
+                enabled = !isBusy && callDemoStep == CallDemoStep.IDLE,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("카카오톡 순환", style = MaterialTheme.typography.labelMedium)
+            }
+            OutlinedButton(
+                onClick = onStartAutoTestSms,
+                enabled = !isBusy && callDemoStep == CallDemoStep.IDLE,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("SMS 순환", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    } else {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                autoTestStatus,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedButton(onClick = onStopAutoTest) {
+                Text("중단", style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }
@@ -91,6 +253,7 @@ private fun ChannelSetupSection(
     defaultSmsPackage: String?,
     onConnectFolder: () -> Unit,
     onOpenNotificationAccessSettings: () -> Unit,
+    onScanNow: () -> Unit,
 ) {
     Text("채널 연결", style = MaterialTheme.typography.titleMedium)
 
@@ -102,8 +265,20 @@ private fun ChannelSetupSection(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onConnectFolder) {
-                Text(if (recordingFolderUri == null) "녹음 폴더 연결" else "폴더 변경")
+            Text(
+                "갤럭시: 내부저장소 › Recordings › Call",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onConnectFolder) {
+                    Text(if (recordingFolderUri == null) "녹음 폴더 연결" else "폴더 변경")
+                }
+                if (recordingFolderUri != null) {
+                    OutlinedButton(onClick = onScanNow) {
+                        Text("지금 스캔")
+                    }
+                }
             }
         }
     }
@@ -124,29 +299,6 @@ private fun ChannelSetupSection(
             OutlinedButton(onClick = onOpenNotificationAccessSettings) {
                 Text("알림 접근 설정 열기")
             }
-        }
-    }
-}
-
-@Composable
-private fun SessionCard(session: SessionEntity) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = when (session.state) {
-                SessionState.SUSPECTED -> MaterialTheme.colorScheme.surfaceVariant
-                SessionState.ESCALATED, SessionState.ALERT -> MaterialTheme.colorScheme.errorContainer
-            },
-        ),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(session.state.name, style = MaterialTheme.typography.titleSmall)
-                Text(formatTime(session.updatedAt), style = MaterialTheme.typography.bodySmall)
-            }
-            Text(
-                "관련 채널: ${session.channelsInvolved.joinToString(", ").ifBlank { "-" }}",
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
     }
 }

@@ -38,7 +38,14 @@ class NotificationCaptureService : NotificationListenerService() {
         val allowlist = TargetPackages.allowlist(this)
         if (sbn.packageName !in allowlist) return
 
-        val channel = if (sbn.packageName == TargetPackages.KAKAO_TALK) Channel.KAKAO else Channel.SMS
+        // Proto 앱 자체 알림(데모용)은 extras의 "demo_channel" 힌트로 채널을 구분한다.
+        // 실제 카카오톡·문자 앱은 패키지명으로 구분한다.
+        val channel = when {
+            sbn.packageName == TargetPackages.KAKAO_TALK -> Channel.KAKAO
+            sbn.packageName == TargetPackages.PROTO_APP ->
+                if (sbn.notification.extras.getString("demo_channel") == "KAKAO") Channel.KAKAO else Channel.SMS
+            else -> Channel.SMS
+        }
 
         // 펼친 알림의 전체 텍스트(BigText)가 있으면 그걸 쓰고, 없으면 한 줄 미리보기로 대체한다.
         // 발신 앱이 알림 미리보기를 숨겨두면 둘 다 비어 있을 수 있다 — 이 경우는 그냥 건너뛴다.
