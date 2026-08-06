@@ -25,6 +25,9 @@ androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+# 확장 아이콘 세트(material-icons-extended)는 쓰지 않는다 — core 만으로 화면에 필요한
+# 아이콘이 전부 나오고, extended 는 수천 개 벡터를 끌어와 APK 를 불필요하게 키운다.
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
