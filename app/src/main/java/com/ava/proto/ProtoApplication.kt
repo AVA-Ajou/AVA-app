@@ -6,6 +6,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.ava.proto.capture.CallRecordingWatcher
 import com.ava.proto.capture.RecordingScanWorker
+import com.ava.proto.classification.BackendClassificationClient
 import com.ava.proto.classification.ClassificationClient
 import com.ava.proto.classification.GroqClassificationClient
 import com.ava.proto.classification.LocalKeywordClassificationClient
@@ -35,17 +36,28 @@ class ProtoApplication : Application() {
         )
     }
 
-    // Groq API 키가 있으면 LLM 분류, 없으면 키워드 폴백
+    /**
+     * 판정기 선택. 아래로 갈수록 약한 대역이다.
+     *
+     *   1. 파인튜닝 모델 서버 — 위험도를 확률에서 읽고 진행 단계까지 준다. 주소가 있으면
+     *   2. Groq LLM — 키워드 없이 문맥을 읽지만 위험도는 이분법이다
+     *   3. 키워드 — API 키가 없어도 앱은 동작해야 하므로 남겨둔다
+     */
     val classificationClient: ClassificationClient by lazy {
+        val serverUrl = BuildConfig.DETECTION_SERVER_URL
         val groqKey = BuildConfig.GROQ_API_KEY
-        if (groqKey.isNotBlank()) GroqClassificationClient(groqKey)
-        else LocalKeywordClassificationClient()
+        when {
+            serverUrl.isNotBlank() -> BackendClassificationClient(serverUrl.trimEnd('/'))
+            groqKey.isNotBlank() -> GroqClassificationClient(groqKey)
+            else -> LocalKeywordClassificationClient()
+        }
     }
 
     val detectionPipeline by lazy {
         DetectionPipeline(
             classificationClient = classificationClient,
             sessionEngine = sessionEngine,
+            eventDao = database.eventDao(),
         )
     }
 

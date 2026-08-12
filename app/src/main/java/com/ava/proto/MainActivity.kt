@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
                     onScanNow = viewModel::scanNow,
                     onDemoKakao = viewModel::demoKakao,
                     onDemoSms = viewModel::demoSms,
-                    onDemoCall = viewModel::demoCall,
+                    onDemoCall = viewModel::rescanCallFolder,
                     onCancelCallDemo = viewModel::cancelCallDemo,
                     onStartAutoTestKakao = { viewModel.startAutoTest(isKakao = true) },
                     onStartAutoTestSms = { viewModel.startAutoTest(isKakao = false) },

@@ -23,6 +23,13 @@ android {
         if (localFile.exists()) localFile.inputStream().use { localProps.load(it) }
         buildConfigField("String", "GEMINI_API_KEY", "\"${localProps["GEMINI_API_KEY"] ?: ""}\"")
         buildConfigField("String", "GROQ_API_KEY", "\"${localProps["GROQ_API_KEY"] ?: ""}\"")
+        // 파인튜닝 모델 서버. 비어 있으면 Groq/키워드 경로로 떨어진다.
+        // 에뮬레이터·실기기에서는 `adb reverse tcp:8000 tcp:8000` 으로 붙인다 —
+        // 10.0.2.2 직결은 맥 방화벽이 TCP를 막아 타임아웃난다(ping은 통과한다).
+        buildConfigField(
+            "String", "DETECTION_SERVER_URL",
+            "\"${localProps["DETECTION_SERVER_URL"] ?: ""}\"",
+        )
     }
 
     buildTypes {

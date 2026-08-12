@@ -104,7 +104,34 @@ internal fun EventCard(event: EventEntity) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (event.riskSignal == RiskSignal.HIGH) {
+            // 모델이 준 두 값. 위험도는 "피싱이 맞나", 단계는 "지금 어디까지 왔나"로
+            // 서로 다른 질문의 답이라 나란히 보여준다.
+            if (event.risk != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "위험도 ${"%.1f".format(event.risk)}",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (event.risk >= 70) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    event.stage?.let { stage ->
+                        StatusBadge(
+                            "${stage}단계 ${event.stageLabel.orEmpty()}".trim(),
+                            content = if (stage >= 3) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            container = if (stage >= 3)
+                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        )
+                    }
+                }
+            }
+            // 근거가 없으면 줄 자체를 그리지 않는다. 단계 판정은 따로 도는데 그게 실패하면
+            // matchedPhrase가 null이 되어 화면에 "null"이 그대로 찍힌다.
+            if (event.riskSignal == RiskSignal.HIGH && event.matchedPhrase != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),

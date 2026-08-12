@@ -8,7 +8,8 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [EventEntity::class, SessionEntity::class],
-    version = 2,
+    // 3: EventEntity 에 risk / stage / stageLabel 추가 (백엔드 모델 판정 경로)
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

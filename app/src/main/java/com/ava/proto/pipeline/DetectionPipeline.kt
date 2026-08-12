@@ -4,6 +4,7 @@ import android.util.Log
 import com.ava.proto.capture.CapturedEvent
 import com.ava.proto.classification.ClassificationClient
 import com.ava.proto.classification.ClassificationVerdict
+import com.ava.proto.data.EventDao
 import com.ava.proto.data.EventEntity
 import com.ava.proto.data.EventStatus
 import com.ava.proto.data.RiskSignal
@@ -22,11 +23,18 @@ private const val TAG = "DetectionPipeline"
 class DetectionPipeline(
     private val classificationClient: ClassificationClient,
     private val sessionEngine: SessionEngine,
+    private val eventDao: EventDao,
 ) {
     suspend fun process(captured: CapturedEvent): EventEntity {
         val (status, verdict) = resolveVerdict(captured)
 
+        // 같은 파일을 다시 분석하는 경우 기존 행을 이어받는다. 새 행을 넣으면 재분석할 때마다
+        // 이벤트가 쌓여 탐지율 같은 숫자가 부풀려진다. 세션은 그대로 두고 판정만 갱신한다.
+        val existing = eventDao.findBySource(captured.channel, captured.sourceLabel)
+
         val event = EventEntity(
+            id = existing?.id ?: 0,
+            sessionId = existing?.sessionId,
             channel = captured.channel,
             capturedAt = captured.capturedAt,
             sourceLabel = captured.sourceLabel,
@@ -34,9 +42,12 @@ class DetectionPipeline(
             status = status,
             riskSignal = verdict.riskSignal,
             matchedPhrase = verdict.matchedPhrase,
-            sessionId = null,
             audioUri = captured.audioUri,
             counterpart = captured.counterpart,
+            // 모델이 준 값은 그대로 싣는다. 등급으로 접기 전 원본이라 화면에 보여줄 수 있다.
+            risk = verdict.risk,
+            stage = verdict.stage,
+            stageLabel = verdict.stageLabel,
         )
 
         return sessionEngine.ingest(event)

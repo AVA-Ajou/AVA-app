@@ -98,7 +98,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 #### 통화 녹음 데모
 - 녹음 폴더가 연결된 상태에서 **"통화 녹음"** 버튼을 누릅니다.
-- 앱이 자동으로 샘플 음성 파일(`demo_call.m4a`)을 선택한 폴더에 복사합니다.
+- 연결한 폴더에 통화 전사본(`.txt`)을 넣어두고 `통화 전사본 [분석]`을 누르면 판정합니다.
   - 파일명: `Call recording_YYYYMMDD_HHMMSS.m4a` (갤럭시 형식 그대로)
 - `FileObserver`가 새 파일을 즉시 감지 → Groq Whisper STT → 키워드 분류 순으로 처리됩니다.
 - 진행 중엔 로딩 바와 함께 **"AI가 녹음을 분석 중..."** 메시지가 표시됩니다.

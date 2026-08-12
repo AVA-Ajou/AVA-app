@@ -64,8 +64,9 @@ class CallRecordingWatcher(private val context: Context) {
     }
 
     private fun handleEvent(fileName: String?) {
-        if (fileName == null || !RecordingFolder.isSamsungCallRecording(fileName)) return
-        Log.d(TAG, "새 녹음 파일 감지 → 즉시 스캔: $fileName")
+        // 전사본 텍스트도 받는다 — 실기기 없이 탐지 경로를 태워보려고 열어둔 통로다.
+        if (fileName == null || !RecordingFolder.isCallSource(fileName)) return
+        Log.d(TAG, "새 통화 파일 감지 → 즉시 스캔: $fileName")
         WorkManager.getInstance(context)
             .enqueue(
                 OneTimeWorkRequestBuilder<RecordingScanWorker>()

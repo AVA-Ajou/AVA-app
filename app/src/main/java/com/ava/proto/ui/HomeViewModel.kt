@@ -22,22 +22,25 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.work.workDataOf
+import com.ava.proto.capture.RecordingFolder
 import kotlinx.coroutines.withTimeoutOrNull
 
 data class HomeUiState(
     val events: List<EventEntity> = emptyList(),
 )
 
-/** 통화 녹음 데모의 단계별 진행 상태. */
+/** 통화 전사본 분석의 진행 상태. */
 enum class CallDemoStep {
     IDLE,
-    /** 음성 파일을 SAF 폴더로 복사 중 */
-    COPYING,
-    /** FileObserver가 감지 → Gemini STT + 분류 중 */
+    /** 녹음 폴더의 통화 파일을 판정하는 중 */
     ANALYZING,
 }
 
 enum class CallDemoResult { NO_FOLDER }
+
+/** 진행 표시를 강제로 내리는 시간. 모델 판정이 파일당 수십 초 걸릴 수 있어 넉넉히 잡는다. */
+private const val SCAN_TIMEOUT_MILLIS = 3 * 60 * 1000L
 
 class HomeViewModel(
     private val database: AppDatabase,
@@ -55,20 +58,8 @@ class HomeViewModel(
     private val _callDemoStep = MutableStateFlow(CallDemoStep.IDLE)
     val callDemoStep: StateFlow<CallDemoStep> = _callDemoStep.asStateFlow()
 
-    // ANALYZING 상태가 시작된 시각 — 이 이후에 CALL 이벤트가 들어오면 완료로 판단
-    private var analyzingStartedAt = 0L
-
-    init {
-        // 워커가 완료돼 DB에 새 CALL 이벤트가 생기면 자동으로 IDLE 전환
-        viewModelScope.launch {
-            database.eventDao().observeRecent().collect { events ->
-                if (_callDemoStep.value == CallDemoStep.ANALYZING) {
-                    val done = events.any { it.channel == Channel.CALL && it.capturedAt >= analyzingStartedAt }
-                    if (done) _callDemoStep.value = CallDemoStep.IDLE
-                }
-            }
-        }
-    }
+    /** 진행 표시를 끝낼 때 쓰는 작업 감시. 새 분석을 시작할 때마다 갈아끼운다. */
+    private var scanWatchJob: Job? = null
 
     private val _callDemoResult = MutableStateFlow<CallDemoResult?>(null)
     val callDemoResult: StateFlow<CallDemoResult?> = _callDemoResult.asStateFlow()
@@ -127,19 +118,49 @@ class HomeViewModel(
         autoTestJob?.cancel()
     }
 
-    fun demoCall() = launchDemo {
-        _callDemoStep.value = CallDemoStep.COPYING
-        val ok = demoInjector.injectCallRecording()
-        if (ok) {
-            analyzingStartedAt = System.currentTimeMillis()
-            _callDemoStep.value = CallDemoStep.ANALYZING
-        } else {
-            _callDemoStep.value = CallDemoStep.IDLE
+    /**
+     * 녹음 폴더에 넣어둔 통화 파일을 지금 분석한다. **이미 판정한 파일도 다시 본다.**
+     *
+     * 예전에는 앱에 박힌 샘플 음성을 폴더에 복사해 STT를 태웠는데, 지금 확인하려는 것은
+     * 모델의 탐지 성능이고 STT는 별개 단계다. 사용자가 폴더에 `.txt`를 넣어두고 이 버튼을
+     * 누르면 그 내용을 그대로 판정한다.
+     */
+    fun rescanCallFolder() = launchDemo {
+        if (RecordingFolder.get(context) == null) {
             _callDemoResult.value = CallDemoResult.NO_FOLDER
+            return@launchDemo
+        }
+
+        val request = OneTimeWorkRequestBuilder<RecordingScanWorker>()
+            .addTag(RecordingScanWorker.TAG_IMMEDIATE)
+            .setInputData(workDataOf(RecordingScanWorker.KEY_FORCE to true))
+            .build()
+        WorkManager.getInstance(context).enqueue(request)
+        _callDemoStep.value = CallDemoStep.ANALYZING
+        watchScan(request.id)
+    }
+
+    /**
+     * 작업이 끝나면 진행 표시를 내린다.
+     *
+     * 예전에는 "분석 시작 시각 이후의 CALL 이벤트가 생겼는가"로 판단했는데, 그 시각은 파일의
+     * **수정 시각**이라 과거에 넣어둔 파일을 다시 볼 때는 영원히 조건에 맞지 않았다.
+     * 작업 상태를 직접 보면 그런 어긋남이 없다. 그래도 안 끝나는 경우를 대비해 시간 제한을 둔다 —
+     * 표시가 영원히 남으면 앱을 지우기 전에는 벗어날 방법이 없다.
+     */
+    private fun watchScan(id: java.util.UUID) {
+        scanWatchJob?.cancel()
+        scanWatchJob = viewModelScope.launch {
+            withTimeoutOrNull(SCAN_TIMEOUT_MILLIS) {
+                WorkManager.getInstance(context).getWorkInfoByIdFlow(id)
+                    .first { it == null || it.state.isFinished }
+            }
+            _callDemoStep.value = CallDemoStep.IDLE
         }
     }
 
     fun cancelCallDemo() {
+        scanWatchJob?.cancel()
         WorkManager.getInstance(context).cancelAllWorkByTag(RecordingScanWorker.TAG_IMMEDIATE)
         _callDemoStep.value = CallDemoStep.IDLE
     }

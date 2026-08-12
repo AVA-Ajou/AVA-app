@@ -47,11 +47,22 @@ class SessionEngine(
         // 신호가 없는 이벤트(예: STT 대기 중인 통화 녹음, 분류 실패, 또는 실제로 무해하다고
         // 분류된 이벤트)는 기록만 하고 세션에는 영향을 주지 않는다.
         if (event.riskSignal == RiskSignal.NONE) {
-            eventDao.insert(event)
+            save(event)
             return event
         }
 
         return mutex.withLock { fuseIntoSession(event) }
+    }
+
+    /**
+     * [EventEntity.id]가 있으면 그 행을 갱신하고, 없으면 새로 넣는다.
+     *
+     * 같은 통화 파일을 다시 분석할 때 행이 쌓이지 않게 하려는 것이다 — 쌓이면 탐지율·오탐률
+     * 같은 숫자가 전부 부풀려진다. 기존 행을 찾는 일은 [com.ava.proto.pipeline.DetectionPipeline]이
+     * 하고, 여기서는 id 유무만 본다.
+     */
+    private suspend fun save(event: EventEntity) {
+        if (event.id != 0L) eventDao.update(event) else eventDao.insert(event)
     }
 
     private suspend fun fuseIntoSession(event: EventEntity): EventEntity {
@@ -97,7 +108,7 @@ class SessionEngine(
         }
 
         val savedEvent = event.copy(sessionId = sessionId)
-        eventDao.insert(savedEvent)
+        save(savedEvent)
 
         val finalSession = updatedSession.copy(id = sessionId)
         val channelNames = channels.map(Channel::name).toSet()

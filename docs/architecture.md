@@ -102,5 +102,10 @@ stateDiagram-v2
 따라서 데모 버튼도 실제 카카오톡·문자 수신과 완전히 동일한 코드 경로를 탄다.
 채널 구분은 알림 extras의 `demo_channel` 힌트로 한다.
 
-`injectCallRecording()`은 `res/raw/demo_call.m4a`를 SAF 폴더에 삼성 파일명 규칙으로 복사할 뿐이고,
-그 뒤는 `FileObserver`가 실제 녹음과 구분 없이 처리한다.
+통화 채널에는 주입할 것이 없다. 사용자가 연결한 폴더에 파일을 넣으면 `FileObserver`가 잡고,
+시뮬레이션 탭의 `통화 전사본 [분석]`은 그 폴더를 **강제로 다시** 훑을 뿐이다
+(`RecordingScanWorker`의 `KEY_FORCE`).
+
+`.txt`는 이미 전사된 통화로 보고 STT를 건너뛴다 — 실기기 녹음 없이 전사 직후 지점부터
+실제 경로를 그대로 태우기 위한 통로다. 예전에는 앱에 박힌 샘플 음성(`res/raw/demo_call.m4a`)을
+복사했는데, 빈 파일이 먼저 노출되어 STT가 실패하고 그대로 굳는 문제가 있어 걷어냈다.

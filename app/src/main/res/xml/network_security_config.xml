@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 9부터 평문 HTTP는 기본 차단이다. 탐지 서버는 개발 중 맥에서 http로 뜨므로
+    그 주소만 예외로 연다 — 전체 허용(usesCleartextTraffic="true")으로 열면 Groq·Gemini
+    호출까지 평문 강등이 가능해져 API 키가 노출될 수 있다.
+
+    10.0.2.2  에뮬레이터에서 본 호스트 맥. 에뮬레이터의 127.0.0.1은 에뮬레이터 자신이다.
+    실기기로 붙일 때는 맥의 LAN IP(예: 192.168.0.x)를 여기 한 줄 추가한다.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
