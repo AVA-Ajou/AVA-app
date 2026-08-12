@@ -119,32 +119,34 @@ internal fun EventCard(event: EventEntity) {
             //
             // 그래서 카드에 남는 판정 표시는 단계 배지 하나뿐이고, 예전 경고 줄이 쓰던
             // 생김새(느낌표 + 빨간 글씨 + 테두리)를 그 배지로 옮겼다.
+            //
+            // **색이 두 가지인 이유** — 규칙이 신호를 하나도 못 찾으면 단계가 null이다.
+            // 없는 근거로 1단계를 찍지 않고, 대신 `주의 필요`를 주황으로 띄운다.
+            // 모델만 위험하다고 본 상태이기 때문이다 — 건강보험공단 환급금 안내(정상)가
+            // 위험도 99.0을 받았는데 규칙은 정보 요구도 이체 지시도 못 찾았고, 실제로
+            // 그 통화에는 없었다. 반대로 진짜 피싱의 19%도 여기 걸리므로(검증셋 실측)
+            // **걸러내지는 않는다** — 미탐은 돈이 나가고 오탐은 짜증에 그친다.
             if (event.riskSignal == RiskSignal.HIGH) {
                 val stage = event.stage
+                val tint = if (stage != null) MaterialTheme.colorScheme.error else caution
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier
-                        .border(
-                            1.dp,
-                            MaterialTheme.colorScheme.error,
-                            RoundedCornerShape(8.dp),
-                        )
+                        .border(1.dp, tint, RoundedCornerShape(8.dp))
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
                     Icon(
                         Icons.Filled.Warning,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = tint,
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        // 규칙이 신호를 하나도 못 찾으면 단계가 null이다. 없는 근거로 1단계를
-                        // 찍지 않는다 — 피싱이라는 사실만 전한다.
                         if (stage != null) "${stage}단계 ${event.stageLabel.orEmpty()}".trim()
-                        else "피싱 의심",
+                        else "주의 필요",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.error,
+                        color = tint,
                     )
                 }
             }
