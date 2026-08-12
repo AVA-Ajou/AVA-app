@@ -30,8 +30,8 @@ private val SAMSUNG_CALL_RECORDING = Regex(
 /**
  * 이미 전사된 통화. 파일 내용이 곧 전사본이라 STT를 건너뛴다.
  *
- * 실기기 없이 탐지 경로 전체를 태워보려고 둔 통로다. 음성 파일을 넣으면 STT(Groq/Gemini)를
- * 거쳐야 하는데, 그 단계는 이 앱이 검증하려는 부분이 아니고 API 키와 실제 녹음이 필요하다.
+ * 실기기 없이 탐지 경로 전체를 태워보려고 둔 통로다. 음성 파일을 넣으면 서버 전사를 거쳐야
+ * 하는데, 그 단계는 지금 확인하려는 부분이 아니고 실제 녹음과 수십 초가 필요하다.
  * `.txt`를 떨어뜨리면 전사가 끝난 직후 지점부터 실제 경로를 그대로 탄다.
  */
 private val TRANSCRIPT_FILE = Regex(""".+\.txt$""", RegexOption.IGNORE_CASE)

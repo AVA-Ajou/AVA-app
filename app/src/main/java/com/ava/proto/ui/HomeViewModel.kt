@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.ava.proto.capture.Channel
 import com.ava.proto.capture.RecordingScanWorker
@@ -22,7 +21,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import androidx.work.workDataOf
 import com.ava.proto.capture.RecordingFolder
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -131,11 +129,7 @@ class HomeViewModel(
             return@launchDemo
         }
 
-        val request = OneTimeWorkRequestBuilder<RecordingScanWorker>()
-            .addTag(RecordingScanWorker.TAG_IMMEDIATE)
-            .setInputData(workDataOf(RecordingScanWorker.KEY_FORCE to true))
-            .build()
-        WorkManager.getInstance(context).enqueue(request)
+        val request = RecordingScanWorker.enqueueNow(context, force = true)
         _callDemoStep.value = CallDemoStep.ANALYZING
         watchScan(request.id)
     }
@@ -169,12 +163,7 @@ class HomeViewModel(
 
     /** 15분 주기를 기다리지 않고 녹음 폴더를 즉시 스캔한다 (수동 확인용). */
     fun scanNow() {
-        WorkManager.getInstance(context)
-            .enqueue(
-                OneTimeWorkRequestBuilder<RecordingScanWorker>()
-                    .addTag(RecordingScanWorker.TAG_IMMEDIATE)
-                    .build(),
-            )
+        RecordingScanWorker.enqueueNow(context)
     }
 
     private fun launchDemo(block: suspend () -> Unit) {

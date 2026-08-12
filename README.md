@@ -11,7 +11,7 @@
 [SMS 알림]       ──┼──→ DetectionPipeline ──→ SessionEngine ──→ AlertNotifier
 [통화 녹음 파일]  ──┘         │
                           KeywordFilter
-                       (+ Groq Whisper STT)
+                       (+ 서버 전사)
 ```
 
 ### 채널별 캡처 방식
@@ -20,14 +20,14 @@
 |------|------|-----------|
 | 카카오톡 | `NotificationListenerService` — 알림 텍스트를 직접 읽음 | 알림 접근 권한 |
 | SMS | `NotificationListenerService` — 동일한 서비스로 처리 | 알림 접근 권한 |
-| 통화 녹음 | SAF 폴더 감시 + `FileObserver` → Groq Whisper STT | 폴더 선택(SAF) |
+| 통화 녹음 | SAF 폴더 감시 + `FileObserver` → 서버 전사 | 폴더 선택(SAF) |
 
 > **카카오톡 주의**: 카카오톡 → 설정 → 알림에서 **"메시지 미리보기"가 켜져 있어야** 알림 텍스트를 읽을 수 있습니다. 꺼져 있으면 내용이 보이지 않습니다.
 
 ### 위험 탐지 흐름
 
 1. **캡처** — 알림 수신 또는 녹음 파일 감지
-2. **STT** (통화 채널만) — Groq Whisper API로 음성을 한국어 텍스트로 변환
+2. **전사** (통화 채널만) — 서버가 음성을 한국어 텍스트로 변환 (`.txt`를 넣으면 건너뜀)
 3. **키워드 분류** — 16개 고위험 키워드 매칭 (안전계좌, 수사관, 검찰청, 구속영장 등)
 4. **세션 융합** — 10분 시간 창 내 이벤트를 하나의 세션으로 묶음
    - 단일 채널 위험 신호 → `SUSPECTED` + 알림
@@ -44,18 +44,18 @@
 - Android SDK 37
 - 실기기 또는 에뮬레이터 (API 26+)
 
-### API 키 설정
+### 서버 주소 설정
 
-프로젝트 루트의 `local.properties`에 아래 항목을 추가합니다. (`local.properties`는 `.gitignore`에 포함되어 있어 커밋되지 않습니다.)
+프로젝트 루트의 `local.properties`에 아래 항목을 추가합니다. (`local.properties`는 `.gitignore`에 포함되어 있어 커밋되지 않습니다.) **외부 API 키는 필요 없습니다** — 판정도 전사도 우리 서버가 합니다.
 
 ```properties
 sdk.dir=/path/to/your/android/sdk
-GROQ_API_KEY=your_groq_api_key_here
+DETECTION_SERVER_URL=http://localhost:8000
 ```
 
-Groq API 키는 [console.groq.com](https://console.groq.com)에서 무료로 발급받을 수 있습니다.
+탐지 서버를 먼저 띄우고(`../Detection-Server/README.md`), `adb reverse tcp:8000 tcp:8000` 으로 연결합니다.
 
-> Gemini API 키(`GEMINI_API_KEY`)도 지원하며, Groq 키가 없을 때 폴백으로 사용됩니다.
+> 주소가 비어 있으면 판정은 키워드 대역으로 떨어지고 전사는 하지 않습니다.
 
 ### 빌드
 
@@ -100,7 +100,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - 녹음 폴더가 연결된 상태에서 **"통화 녹음"** 버튼을 누릅니다.
 - 연결한 폴더에 통화 전사본(`.txt`)을 넣어두고 `통화 전사본 [분석]`을 누르면 판정합니다.
   - 파일명: `Call recording_YYYYMMDD_HHMMSS.m4a` (갤럭시 형식 그대로)
-- `FileObserver`가 새 파일을 즉시 감지 → Groq Whisper STT → 키워드 분류 순으로 처리됩니다.
+- `FileObserver`가 새 파일을 즉시 감지 → 서버 전사 → 서버 판정 순으로 처리됩니다.
 - 진행 중엔 로딩 바와 함께 **"AI가 녹음을 분석 중..."** 메시지가 표시됩니다.
 - 분석이 완료되면 이벤트 목록에 전사 텍스트와 탐지된 위험 키워드가 나타납니다.
 - 분석 중 **"중단"** 버튼으로 취소할 수 있습니다.
@@ -109,8 +109,24 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ### 결과 확인
 
-- **세션 목록**: 위험 신호가 탐지된 세션. `SUSPECTED`(1채널) 또는 `ESCALATED`(2채널 이상)
-- **최근 이벤트**: 채널별 수신 내용, 전사 텍스트, 매칭된 위험 키워드
+기록 화면의 이벤트 카드에 나오는 것은 세 가지입니다.
+
+| | |
+|---|---|
+| 전사 텍스트 | 통화 내용. `.txt`를 넣었으면 그 내용 그대로 |
+| **진행 단계** | `1단계 압박·유인` / `2단계 정보·계좌` / `3단계 이체 지시`. 3단계는 빨간색 |
+| 위험 신호 | 모델이 원문에서 인용한 판정 근거 |
+
+**위험도 점수는 화면에 나오지 않습니다.** 값이 사실상 0 아니면 100으로 갈려 정보가 없고,
+사용자가 할 행동을 정하는 것은 점수가 아니라 단계이기 때문입니다. 원본 값이 필요하면
+로그에서 봅니다.
+
+```bash
+adb logcat -s BackendClassification
+```
+
+피싱으로 판정됐지만(70점 이상) 단계 신호가 하나도 안 잡히면 `피싱 의심`만 표시됩니다.
+없는 근거로 단계를 붙이지 않기 위해서입니다.
 
 ---
 
@@ -121,7 +137,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 | 카카오톡 감지 | 버튼으로 피싱 텍스트 주입 | 실제 카카오톡 알림에서 텍스트 추출 |
 | SMS 감지 | 버튼으로 피싱 텍스트 주입 | 실제 문자 알림에서 텍스트 추출 |
 | 통화 녹음 감지 | 샘플 파일 복사 후 자동 분석 | 갤럭시 녹음 앱이 저장한 파일 자동 감지 |
-| STT | Groq Whisper API (실제 AI) | 동일 |
+| 전사 | 서버 (Gemma 4) | 동일 |
 | 키워드 분류 | 로컬 키워드 필터 (실제 동작) | 동일 |
 | 알림 | 실제 시스템 알림 | 동일 |
 
@@ -137,8 +153,7 @@ app/src/main/java/com/ava/proto/
 │   ├── RecordingFolder.kt             # SAF 폴더 관리 + 삼성 파일명 패턴
 │   └── RecordingScanWorker.kt         # WorkManager 워커 (STT 호출)
 ├── stt/
-│   ├── GroqAudioTranscriber.kt        # Groq Whisper API (기본)
-│   └── GeminiAudioTranscriber.kt      # Gemini STT (폴백)
+│   └── ServerAudioTranscriber.kt      # 서버 /transcribe 업로드
 ├── classification/
 │   ├── KeywordFilter.kt               # 16개 고위험 키워드 매칭
 │   └── LocalKeywordClassificationClient.kt
@@ -164,7 +179,7 @@ app/src/main/java/com/ava/proto/
 - **UI**: Jetpack Compose + Material 3
 - **DB**: Room
 - **백그라운드**: WorkManager
-- **STT**: Groq Whisper large-v3 (REST API, SDK 없음)
+- **전사·판정**: 자체 서버 (`../Detection-Server`, Gemma 4 + LoRA). 외부 API 없음
 - **알림 캡처**: `NotificationListenerService`
 - **파일 감시**: `FileObserver` (Linux inotify) + SAF
 - **최소 SDK**: API 26 (Android 8.0)

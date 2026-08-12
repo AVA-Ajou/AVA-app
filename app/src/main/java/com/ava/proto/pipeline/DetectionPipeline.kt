@@ -16,7 +16,7 @@ private const val TAG = "DetectionPipeline"
  * 캡처 -> 분류 -> 세션 융합을 잇는 유일한 조립 지점.
  *
  * 캡처 계층(NotificationCaptureService, RecordingScanWorker)은 이 클래스만 알면 되고,
- * 분류를 누가 하는지(임시 키워드 대역인지 Gemini인지)는 몰라도 된다. 반대로 분류·세션
+ * 분류를 누가 하는지(모델 서버인지 키워드 대역인지)는 몰라도 된다. 반대로 분류·세션
  * 로직도 캡처 방식(알림 리스너인지 SAF 폴더 스캔인지)을 몰라도 된다 — 각 계층이 서로를
  * 모르게 유지하려고 이 조립 지점을 따로 뒀다.
  */

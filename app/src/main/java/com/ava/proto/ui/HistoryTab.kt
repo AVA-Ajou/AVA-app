@@ -1,6 +1,6 @@
 package com.ava.proto.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -104,44 +104,33 @@ internal fun EventCard(event: EventEntity) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            // 모델이 준 두 값. 위험도는 "피싱이 맞나", 단계는 "지금 어디까지 왔나"로
-            // 서로 다른 질문의 답이라 나란히 보여준다.
-            if (event.risk != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        "위험도 ${"%.1f".format(event.risk)}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (event.risk >= 70) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    event.stage?.let { stage ->
-                        StatusBadge(
-                            "${stage}단계 ${event.stageLabel.orEmpty()}".trim(),
-                            content = if (stage >= 3) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            container = if (stage >= 3)
-                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.surfaceContainerHigh,
-                        )
-                    }
-                }
-            }
-            // 근거가 없으면 줄 자체를 그리지 않는다. 단계 판정은 따로 도는데 그게 실패하면
-            // matchedPhrase가 null이 되어 화면에 "null"이 그대로 찍힌다.
-            if (event.riskSignal == RiskSignal.HIGH && event.matchedPhrase != null) {
+            // **위험도 숫자는 화면에 내지 않는다.** 값이 사실상 0 아니면 100으로 갈려
+            // "위험도 100.0"이 "피싱임"과 같은 말이 되고, 사용자가 할 행동을 정하는 것은
+            // 점수가 아니라 단계다 — 같은 100점이어도 압박 단계면 끊으면 되고 이체 지시
+            // 단계면 몇 분 안에 돈이 나간다.
+            //
+            // 지우는 게 아니라 화면에서만 뺀다. 원본 값은 `EventEntity.risk` 와
+            // `BackendClassification` 로그에 그대로 남는다 — 59.8 같은 경계선 오탐은
+            // 숫자로만 보이기 때문에 개발 중에는 볼 수 있어야 한다.
+            //
+            // 근거 문장(`matchedPhrase`)도 화면에 내지 않는다. 모델이 인용은 정확히 하지만
+            // **가장 결정적인 문구를 못 고른다** — 계좌번호를 부르는 대목 대신 "통화가
+            // 녹취됩니다"를 뽑아오는 것을 두 번 확인했다. DB에는 그대로 남는다.
+            //
+            // 그래서 카드에 남는 판정 표시는 단계 배지 하나뿐이고, 예전 경고 줄이 쓰던
+            // 생김새(느낌표 + 빨간 글씨 + 테두리)를 그 배지로 옮겼다.
+            if (event.riskSignal == RiskSignal.HIGH) {
+                val stage = event.stage
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                        .border(
+                            1.dp,
+                            MaterialTheme.colorScheme.error,
                             RoundedCornerShape(8.dp),
                         )
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
                     Icon(
                         Icons.Filled.Warning,
@@ -150,8 +139,11 @@ internal fun EventCard(event: EventEntity) {
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        "위험 신호: ${event.matchedPhrase}",
-                        style = MaterialTheme.typography.bodySmall,
+                        // 규칙이 신호를 하나도 못 찾으면 단계가 null이다. 없는 근거로 1단계를
+                        // 찍지 않는다 — 피싱이라는 사실만 전한다.
+                        if (stage != null) "${stage}단계 ${event.stageLabel.orEmpty()}".trim()
+                        else "피싱 의심",
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.error,
                     )
                 }

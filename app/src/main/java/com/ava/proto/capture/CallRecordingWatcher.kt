@@ -4,8 +4,6 @@ import android.content.Context
 import android.os.Build
 import android.os.FileObserver
 import android.util.Log
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import java.io.File
 
 private const val TAG = "CallRecordingWatcher"
@@ -67,11 +65,6 @@ class CallRecordingWatcher(private val context: Context) {
         // 전사본 텍스트도 받는다 — 실기기 없이 탐지 경로를 태워보려고 열어둔 통로다.
         if (fileName == null || !RecordingFolder.isCallSource(fileName)) return
         Log.d(TAG, "새 통화 파일 감지 → 즉시 스캔: $fileName")
-        WorkManager.getInstance(context)
-            .enqueue(
-                OneTimeWorkRequestBuilder<RecordingScanWorker>()
-                    .addTag(RecordingScanWorker.TAG_IMMEDIATE)
-                    .build(),
-            )
+        RecordingScanWorker.enqueueNow(context)
     }
 }

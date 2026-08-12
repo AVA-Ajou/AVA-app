@@ -14,13 +14,12 @@ flowchart TD
 
     subgraph stt["stt"]
         AT["AudioTranscriber"]
-        GAT["GroqAudioTranscriber<br/>whisper-large-v3"]
-        GEM["GeminiAudioTranscriber<br/>(폴백)"]
+        GAT["ServerAudioTranscriber<br/>서버 /transcribe"]
     end
 
     subgraph cls["classification — 판정"]
         CC["ClassificationClient"]
-        GCC["GroqClassificationClient<br/>llama-3.3-70b"]
+        GCC["BackendClassificationClient<br/>서버 /analyze"]
         LKC["LocalKeywordClassificationClient<br/>(키 없을 때 폴백)"]
     end
 
@@ -51,7 +50,7 @@ sequenceDiagram
     participant W as CallRecordingWatcher
     participant WM as WorkManager
     participant SW as RecordingScanWorker
-    participant STT as GroqAudioTranscriber
+    participant STT as ServerAudioTranscriber
     participant P as DetectionPipeline
     participant S as SessionEngine
 

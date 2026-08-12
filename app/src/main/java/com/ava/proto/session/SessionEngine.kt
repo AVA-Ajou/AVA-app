@@ -22,8 +22,7 @@ private const val WINDOW_MILLIS = 10 * 60 * 1000L // 10분
  * 강도 조절 장치다. 통화 하나만으로 끝나는 보이스피싱도(STT가 붙으면) 이 로직에서
  * 놓치지 않는다.
  *
- * ALERT는 백엔드(Gemini) 분류로만 도달하도록 설계돼 있다. 백엔드가 아직 연결되지 않아
- * 현재 코드 경로로는 SUSPECTED/ESCALATED까지만 도달한다.
+ * ALERT는 자리만 잡아둔 값이라 현재 코드 경로로는 SUSPECTED/ESCALATED까지만 도달한다.
  *
  * 시간 창은 이벤트가 실제로 일어난 시각([EventEntity.capturedAt])을 기준으로 계산한다 —
  * 처리 시각(now())을 쓰면 최대 15분 지연되는 통화 채널이 실제로는 가까운 시각에 있었던

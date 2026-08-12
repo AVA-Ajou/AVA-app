@@ -8,7 +8,6 @@ import com.ava.proto.capture.CallRecordingWatcher
 import com.ava.proto.capture.RecordingScanWorker
 import com.ava.proto.classification.BackendClassificationClient
 import com.ava.proto.classification.ClassificationClient
-import com.ava.proto.classification.GroqClassificationClient
 import com.ava.proto.classification.LocalKeywordClassificationClient
 import com.ava.proto.data.AppDatabase
 import com.ava.proto.demo.DemoInjector
@@ -16,8 +15,7 @@ import com.ava.proto.notification.AlertNotifier
 import com.ava.proto.pipeline.DetectionPipeline
 import com.ava.proto.session.SessionEngine
 import com.ava.proto.stt.AudioTranscriber
-import com.ava.proto.stt.GeminiAudioTranscriber
-import com.ava.proto.stt.GroqAudioTranscriber
+import com.ava.proto.stt.ServerAudioTranscriber
 import java.util.concurrent.TimeUnit
 
 /**
@@ -37,20 +35,16 @@ class ProtoApplication : Application() {
     }
 
     /**
-     * 판정기 선택. 아래로 갈수록 약한 대역이다.
+     * 판정기 선택.
      *
-     *   1. 파인튜닝 모델 서버 — 위험도를 확률에서 읽고 진행 단계까지 준다. 주소가 있으면
-     *   2. Groq LLM — 키워드 없이 문맥을 읽지만 위험도는 이분법이다
-     *   3. 키워드 — API 키가 없어도 앱은 동작해야 하므로 남겨둔다
+     * 서버 주소가 없으면 키워드 대역으로 떨어진다 — 설정이 덜 된 상태에서도 앱은 떠야 한다.
+     * 예전에는 그 사이에 Groq LLM 단계가 있었는데, 서버가 위험도를 **보정된 확률**로 주는
+     * 지금은 쓸 이유가 없어 걷어냈다.
      */
     val classificationClient: ClassificationClient by lazy {
         val serverUrl = BuildConfig.DETECTION_SERVER_URL
-        val groqKey = BuildConfig.GROQ_API_KEY
-        when {
-            serverUrl.isNotBlank() -> BackendClassificationClient(serverUrl.trimEnd('/'))
-            groqKey.isNotBlank() -> GroqClassificationClient(groqKey)
-            else -> LocalKeywordClassificationClient()
-        }
+        if (serverUrl.isNotBlank()) BackendClassificationClient(serverUrl.trimEnd('/'))
+        else LocalKeywordClassificationClient()
     }
 
     val detectionPipeline by lazy {
@@ -62,18 +56,15 @@ class ProtoApplication : Application() {
     }
 
     /**
-     * 통화 녹음 STT.
-     * Groq Whisper를 우선 사용하고, 키가 없으면 Gemini로 폴백.
-     * 둘 다 없으면 null — [RecordingScanWorker]가 PENDING_TRANSCRIPTION으로 기록한다.
+     * 통화 녹음 STT. 판정과 **같은 서버, 같은 모델**이 한다 — 어댑터를 끄면 전사기다.
+     *
+     * 서버 주소가 없으면 null 이고, [RecordingScanWorker]가 PENDING_TRANSCRIPTION 으로
+     * 기록만 남긴다. 예전에는 Groq Whisper·Gemini 를 썼는데, 통화 음성이 외부 업체로
+     * 나가는 것이 이 앱의 권한 정책과 맞지 않아 걷어냈다.
      */
     val audioTranscriber: AudioTranscriber? by lazy {
-        val groqKey = BuildConfig.GROQ_API_KEY
-        val geminiKey = BuildConfig.GEMINI_API_KEY
-        when {
-            groqKey.isNotBlank() -> GroqAudioTranscriber(this, groqKey)
-            geminiKey.isNotBlank() -> GeminiAudioTranscriber(this, geminiKey)
-            else -> null
-        }
+        BuildConfig.DETECTION_SERVER_URL.takeIf { it.isNotBlank() }
+            ?.let { ServerAudioTranscriber(this, it.trimEnd('/')) }
     }
 
     val demoInjector by lazy { DemoInjector(this, detectionPipeline) }

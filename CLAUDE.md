@@ -9,8 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 같은 시간 창 안에서 두 채널 이상이 겹치면 경보를 격상시킨다.
 
 단일 모듈 앱(`:app`)이다. 판정은 **파인튜닝한 Gemma를 올린 서버**(`../Detection-Server`)가
-맡고, 앱은 텍스트를 보내고 위험도를 받는다. 서버 주소가 없으면 Groq LLM으로, 그것도 없으면
-키워드로 떨어진다 — API 키가 없어도 앱은 동작해야 한다.
+맡는다. 앱은 텍스트를 보내고 위험도를 받으며, **통화 음성을 글로 옮기는 일도 같은 서버가
+한다** — 모델 하나로 어댑터를 껐다 켜며 세 가지를 처리한다.
+
+**외부 API가 없다.** 예전에는 Groq Whisper(STT)와 Groq LLM(분류)에 매여 있었고 통화 음성이
+외부 업체로 나갔는데, 서버 모델(Gemma 4)이 오디오를 직접 받게 되면서 걷어냈다.
+서버 주소가 없으면 키워드 대역으로 떨어진다 — 설정이 덜 돼도 앱은 떠야 한다.
 
 ```
 카카오톡 · SMS · 통화 녹음  ──텍스트──▶  Detection-Server  ──▶  위험도 0~100 (+ 진행 단계)
@@ -34,15 +38,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   구분해 기록한다. NONE은 "분류해봤더니 무해함"이지 "분류를 못 함"이 아니다.
 - **다채널 격상을 알림 여부의 문으로 쓰지 말 것.** 채널 하나만으로도 `SUSPECTED` + 알림이 나간다.
   다채널은 "얼마나 급한가"를 정하는 강도 조절기다.
-- **API 키와 서버 주소를 코드나 커밋에 넣지 말 것.** `local.properties` → `buildConfigField`
-  경로만 쓴다 (`GROQ_API_KEY`, `GEMINI_API_KEY`, `DETECTION_SERVER_URL`).
+- **서버 주소를 코드나 커밋에 넣지 말 것.** `local.properties` → `buildConfigField` 경로만
+  쓴다 (`DETECTION_SERVER_URL`).
+- **통화 음성을 외부로 내보내지 말 것.** 권한을 깎아온 이 프로젝트에서 음성을 제3자 API에
+  넘기는 것은 앞뒤가 맞지 않는다. 전사는 우리 서버가 한다.
 - **우리가 띄운 경보를 되잡지 말 것.** 자기 앱을 알림 감시 대상에 넣은 건 데모 버튼이 실제
   경로를 타게 하려던 것인데, 그 통로로 `AlertNotifier`의 경보까지 돌아온다. 통화 한 건을
   넣었더니 경보 → SMS 이벤트 → 다시 경보로 3초 간격 세 바퀴가 돌아 이벤트가 1건에서 4건으로
   늘었다. `NotificationCaptureService`가 `AlertNotifier.CHANNEL_ID`를 걸러낸다 — 이 필터를
   지우면 모든 측정치가 조용히 오염된다.
+- **즉시 스캔은 `RecordingScanWorker.enqueueNow()`로만 넣을 것.** `WorkManager.enqueue()`를
+  직접 부르면 파일이 연달아 들어올 때 워커가 동시에 여러 개 뜨고, 같은 목록을 훑어 **같은
+  파일을 두 번 판정**한다. 서버는 순전파를 락으로 직렬화하므로 늦은 쪽이 읽기 타임아웃으로
+  죽어 `CLASSIFICATION_FAILED` 이벤트가 남는다. 실측으로 확인했다.
 - **위험도를 앱에서 다시 계산하지 말 것.** 서버가 준 값은 학습으로 점검된 확률이다.
   `RiskSignal`은 그걸 세 단계로 접은 파생값일 뿐이고, 원본은 `EventEntity.risk`에 남긴다.
+- **위험도 숫자를 화면에 다시 띄우지 말 것.** 값이 사실상 0 아니면 100으로 갈려
+  `위험도 100.0`이 "피싱임"과 같은 말이 된다. 사용자가 할 행동을 정하는 것은 점수가 아니라
+  단계다 — 같은 100점이어도 압박 단계면 끊으면 되고 이체 지시 단계면 몇 분 안에 돈이 나간다.
+  **지우는 게 아니라 화면에서만 뺀 것이다** — `EventEntity.risk`와 `BackendClassification`
+  로그에는 그대로 남는다. 경계선 오탐(정상 통화 59.8점 같은 값)은 숫자로만 보이기 때문에
+  개발 중에는 볼 수 있어야 한다.
 - **세션 시간 창은 `capturedAt`(발생 시각)으로 계산한다.** `now()`를 쓰면 STT 때문에 최대 15분
   지연되는 통화 채널이 같은 시각대의 다른 채널과 엮이지 못한다.
 - **주석은 "왜"만 쓴다.** 이 코드베이스의 기존 KDoc/주석은 전부 결정의 근거를 적고 있다.
@@ -59,6 +75,7 @@ app/src/main/java/com/ava/proto/
 │   ├── CallRecordingWatcher.kt        # FileObserver(inotify) 실시간 감지
 │   ├── RecordingScanWorker.kt         # WorkManager: 폴더 스캔 → STT → 파이프라인
 │   │                                  #   .txt 는 STT를 건너뛰고 내용을 전사본으로 쓴다
+│   │   └── enqueueNow()               #   즉시 스캔의 유일한 진입점. 유일 작업으로 줄을 세운다
 │   ├── RecordingFolder.kt             # SAF tree URI 관리 + 파일명 패턴 + 경로 변환
 │   │                                  #   isCallSource = 삼성 녹음(.m4a) 또는 전사본(.txt)
 │   ├── TargetPackages.kt              # 알림 허용 목록 (카톡 / 자기 자신 / 기본 문자 앱)
@@ -66,12 +83,10 @@ app/src/main/java/com/ava/proto/
 │   └── Channel.kt                     # CALL / SMS / KAKAO
 ├── stt/                             # 실패 시 null 반환 (예외 아님)
 │   ├── AudioTranscriber.kt
-│   ├── GroqAudioTranscriber.kt        # whisper-large-v3, multipart
-│   └── GeminiAudioTranscriber.kt      # 폴백
+│   └── ServerAudioTranscriber.kt      # 우리 서버 /transcribe 에 multipart 업로드
 ├── classification/                  # 실패 시 예외 전파 (null 아님)
 │   ├── ClassificationClient.kt        # ClassificationVerdict: riskSignal + risk + stage + reason
 │   ├── BackendClassificationClient.kt # 파인튜닝 모델 서버. 2단계 호출(위험도 → 단계·근거)
-│   ├── GroqClassificationClient.kt    # llama-3.3-70b, JSON 강제. 서버 없을 때 대역
 │   ├── LocalKeywordClassificationClient.kt
 │   └── KeywordFilter.kt               # 16개 고위험 문구, 키 없을 때만 사용
 ├── pipeline/DetectionPipeline.kt    # 캡처 → 분류 → 세션의 유일한 조립 지점
@@ -105,9 +120,7 @@ app/src/main/java/com/ava/proto/
 
 ```properties
 sdk.dir=/Users/<you>/Library/Android/sdk
-DETECTION_SERVER_URL=http://localhost:8000   # 파인튜닝 모델 서버. 비면 Groq로 폴백
-GROQ_API_KEY=gsk_...                         # 서버가 없을 때만 쓰임
-GEMINI_API_KEY=                              # 선택 (STT 폴백)
+DETECTION_SERVER_URL=http://localhost:8000   # 판정·전사 서버. 비면 키워드 대역으로 떨어진다
 ```
 
 **서버는 `adb reverse`로 붙인다.** `10.0.2.2` 직결은 맥 방화벽이 TCP를 막아 타임아웃난다
@@ -123,7 +136,7 @@ adb reverse tcp:8000 tcp:8000
 adb install -r app/build/outputs/apk/debug/app-debug.apk  # 수동 설치
 ./gradlew lintDebug                                       # Android Lint
 ./gradlew clean
-adb logcat -s DetectionPipeline BackendClassification GroqClassification \
+adb logcat -s DetectionPipeline BackendClassification ServerTranscriber \
            RecordingScanWorker CallRecordingWatcher NotificationCapture DemoInjector
 ```
 
@@ -163,10 +176,18 @@ adb push 통화녹음_테스트.txt /sdcard/Recordings/
   **상태만 오르고 위험도 숫자는 오르지 않는다** — 다채널 융합을 로그오즈 덧셈으로 바꾸는 것이
   다음 수다 (`../Voice-Detection/docs/METHOD.md` 6절).
 - **위험도(risk)** — 모델이 로짓에서 읽은 0~100. 보정돼 있어 87점은 실제로 87% 확률을 뜻한다.
-  `RiskSignal`은 이 값을 세 단계로 접은 파생값이다.
-- **진행 단계(stage)** — "지금 어디까지 왔나"(1 사칭 / 2 압박 / 3 계좌 / 4 이체). 위험도와
-  다른 질문의 답이다. **현재 값은 부정확하다** — 원본 Gemma가 생성으로 뱉어 거의 전부 3으로
-  쏠린다. `../Voice-Detection/docs/RESULTS.md` 참고.
+  70 이상이면 피싱으로 본다. **화면에는 나오지 않는다** — DB와 로그에만 남는 내부 값이다.
+- **진행 단계(stage)** — "지금 어디까지 왔나". **화면에 나가는 유일한 판정 표시다.**
+
+  | | | 사용자가 할 일 |
+  |---|---|---|
+  | 1 | 압박·유인 | 끊으면 된다. 아직 아무것도 안 줬다 |
+  | 2 | 정보·계좌 | 이미 뭔가 줬을 수 있다. 준 게 뭔지 확인하고 차단 |
+  | 3 | 이체 지시 | **지금 당장 멈춰야 한다.** 몇 분 안에 돈이 나간다 |
+
+  서버의 정규식(`../Detection-Server/signals.py`)이 뽑는다. 예전에는 원본 Gemma가 생성으로
+  뱉어 한쪽으로 쏠렸다 — 정답지 36건에서 규칙 91.7% / 생성 33.3%.
+  **신호가 하나도 안 잡히면 `null`이고 화면은 `피싱 의심`만 띄운다** (피싱의 약 15%).
 - 전형적인 한국 보이스피싱 시나리오(금융감독원·검찰청 사칭 → 안전계좌 이체 요구)를 기준으로
   키워드와 데모 시나리오가 구성돼 있다.
 
@@ -183,12 +204,13 @@ adb push 통화녹음_테스트.txt /sdcard/Recordings/
 
 ## Key Patterns
 
-- **인터페이스 뒤 폴백 체인** — `ClassificationClient` / `AudioTranscriber`는 설정 유무에 따라
-  `ProtoApplication`에서 구현체가 선택된다. 판정기는 3단이다: 파인튜닝 서버 → Groq → 키워드.
-  서버도 키도 없어도 앱은 동작해야 한다.
-- **느린 부가 정보가 판정을 막지 않는다** — 위험도는 순전파 한 번(1초 미만)이지만 단계·근거는
-  생성이라 십수 초가 걸린다. `BackendClassificationClient`는 위험도를 먼저 받아 경보 여부를
-  정하고, 문턱을 넘을 때만 두 번째 요청을 보낸다. 두 번째가 실패해도 판정은 살린다.
+- **인터페이스 뒤에서 구현체가 갈린다** — `ClassificationClient` / `AudioTranscriber`는
+  `ProtoApplication`이 서버 주소 유무를 보고 고른다. 서버가 없으면 판정은 키워드 대역으로
+  떨어지고 전사는 아예 없다(PENDING_TRANSCRIPTION 으로 남는다). 설정이 덜 돼도 앱은 떠야 한다.
+- **판정은 서버 호출 한 번이다** — 위험도(순전파)와 단계(정규식)가 한 응답에 함께 온다.
+  예전에는 단계가 근거 생성(160토큰, 십수 초)에 딸려 있어 요청을 두 번 보냈고 판정 한 건에
+  16초가 걸렸다. 근거 문장은 화면에 쓰지 않으므로 아예 요청하지 않는다 —
+  `BackendClassificationClient` 에 두 번째 호출을 되살리지 말 것.
 - **실패 처리 계약이 계층마다 다르다** — STT는 실패 시 `null`(이벤트는 기록됨),
   분류는 실패 시 **예외**(호출부가 `CLASSIFICATION_FAILED`로 기록). 새 구현체도 이를 따를 것.
 - **데모가 실제 경로를 그대로 탄다** — `DemoInjector`는 파이프라인을 직접 호출하지 않고
@@ -205,7 +227,6 @@ adb push 통화녹음_테스트.txt /sdcard/Recordings/
 - `docs/architecture.md` — 계층 구조·시퀀스·세션 상태 전이 다이어그램(Mermaid), 융합 규칙 표
 - `docs/data-model.md` — Room 엔티티/enum 의미론, DAO 쿼리 의도, 마이그레이션 정책
 - `docs/capture-channels.md` — 채널별 캡처 방식, 권한 모델과 배제 근거, 삼성 파일명 패턴, SAF 경로 변환
-- `docs/external-apis.md` — Groq 분류/STT·Gemini 폴백, API 키 주입 경로, 실패 처리 계약
 - `README.md` — 데모 시연 절차와 기기 설정 안내
   (일부 내용이 최신 코드와 어긋난다: 세션 목록 UI는 제거됐고, 분류의 기본 경로는 파인튜닝
   모델 서버다)

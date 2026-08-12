@@ -17,7 +17,7 @@ DB 이름 `proto.db`, 현재 version **2**, `exportSchema = true` → `app/schem
 | `text` | String? | null = 아직 분석할 텍스트 없음 (STT 대기) |
 | `status` | `EventStatus` | 아래 참조 |
 | `riskSignal` | `RiskSignal` | `NONE` / `LOW` / `HIGH` |
-| `matchedPhrase` | String? | 키워드 폴백은 매칭 문구, Groq는 판단 이유(reason) |
+| `matchedPhrase` | String? | 키워드 대역은 매칭 문구, 서버 경로는 근거에서 뽑은 원문 인용 |
 | `sessionId` | Long? | 세션에 합류하지 않은 이벤트는 null |
 | `audioUri` | String? | 통화 채널만 |
 | `counterpart` | String? | 알림 `EXTRA_TITLE`(발신자). 통화는 항상 null |
@@ -34,9 +34,12 @@ DB 이름 `proto.db`, 현재 version **2**, `exportSchema = true` → `app/schem
 
 ### `RiskSignal.LOW`
 
-현재 어떤 구현체도 `LOW`를 만들어내지 않는다. 키워드 폴백은 `HIGH`/`NONE`뿐이고,
-`GroqClassificationClient`도 `is_phishing` 불리언을 `HIGH`/`NONE`으로만 매핑한다.
-애매한 판정을 내려보낼 자리로 남겨둔 값이다.
+서버 경로는 40~70 구간을 `LOW`로 내려보내지만 **화면에서는 `NONE`과 구분되지 않는다.**
+피싱 여부는 70을 기준으로만 가르기 때문이다. 키워드 폴백은 `HIGH`/`NONE`뿐이다.
+
+`risk`(0~100 원본)는 계속 저장되지만 **화면에는 나오지 않는다.** 값이 사실상 0 아니면
+100으로 갈려 정보가 없고, 사용자가 할 행동은 진행 단계가 정한다. 다만 경계선 오탐
+(정상 통화 59.8점 같은 값)은 이 컬럼으로만 보이므로 지우지 말 것.
 
 ## `sessions` — `SessionEntity`
 

@@ -37,7 +37,7 @@ private val SMS_NORMAL_MESSAGES = listOf(
  *
  * - [injectKakao]: Proto 앱 알림 발생 → 서비스가 KAKAO 채널로 수신
  * - [injectSms]: Proto 앱 알림 발생 → 서비스가 SMS 채널로 수신
- *   → FileObserver가 감지 → RecordingScanWorker → Gemini STT → 분류 → 알림
+ *   → FileObserver가 감지 → RecordingScanWorker → 서버 전사 → 분류 → 알림
  */
 class DemoInjector(private val context: Context, private val pipeline: DetectionPipeline) {
 
