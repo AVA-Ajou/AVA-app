@@ -91,6 +91,19 @@ private val DarkColors = darkColorScheme(
     inverseOnSurface = Color(0xFF2E3132),
 )
 
+/**
+ * 확정되지 않은 경고에 쓰는 주황색. Material 3 스킴에 자리가 없어 따로 둔다.
+ *
+ * `error`(빨강)와 구분하려고 만든 값이다 — 빨강은 **규칙이 근거를 찾은** 단계 표시에 쓰고,
+ * 주황은 모델만 위험하다고 보고 규칙은 아무 신호도 못 찾은 `주의 필요`에 쓴다.
+ * 라이트/다크 값을 쌍으로 두는 이유는 `error` 와 같다 — 한쪽만 정하면 다크 모드에서 묻힌다.
+ */
+private val CautionLight = Color(0xFFB35309)
+private val CautionDark = Color(0xFFFFB77C)
+
+val caution: Color
+    @Composable get() = if (isSystemInDarkTheme()) CautionDark else CautionLight
+
 @Composable
 fun ProtoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

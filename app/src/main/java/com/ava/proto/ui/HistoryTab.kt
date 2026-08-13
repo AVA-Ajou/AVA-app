@@ -1,6 +1,6 @@
 package com.ava.proto.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -104,28 +104,49 @@ internal fun EventCard(event: EventEntity) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // **위험도 숫자는 화면에 내지 않는다.** 값이 사실상 0 아니면 100으로 갈려
+            // "위험도 100.0"이 "피싱임"과 같은 말이 되고, 사용자가 할 행동을 정하는 것은
+            // 점수가 아니라 단계다 — 같은 100점이어도 압박 단계면 끊으면 되고 이체 지시
+            // 단계면 몇 분 안에 돈이 나간다.
+            //
+            // 지우는 게 아니라 화면에서만 뺀다. 원본 값은 `EventEntity.risk` 와
+            // `BackendClassification` 로그에 그대로 남는다 — 59.8 같은 경계선 오탐은
+            // 숫자로만 보이기 때문에 개발 중에는 볼 수 있어야 한다.
+            //
+            // 근거 문장(`matchedPhrase`)도 화면에 내지 않는다. 모델이 인용은 정확히 하지만
+            // **가장 결정적인 문구를 못 고른다** — 계좌번호를 부르는 대목 대신 "통화가
+            // 녹취됩니다"를 뽑아오는 것을 두 번 확인했다. DB에는 그대로 남는다.
+            //
+            // 그래서 카드에 남는 판정 표시는 단계 배지 하나뿐이고, 예전 경고 줄이 쓰던
+            // 생김새(느낌표 + 빨간 글씨 + 테두리)를 그 배지로 옮겼다.
+            //
+            // **색이 두 가지인 이유** — 규칙이 신호를 하나도 못 찾으면 단계가 null이다.
+            // 없는 근거로 1단계를 찍지 않고, 대신 `주의 필요`를 주황으로 띄운다.
+            // 모델만 위험하다고 본 상태이기 때문이다 — 건강보험공단 환급금 안내(정상)가
+            // 위험도 99.0을 받았는데 규칙은 정보 요구도 이체 지시도 못 찾았고, 실제로
+            // 그 통화에는 없었다. 반대로 진짜 피싱의 19%도 여기 걸리므로(검증셋 실측)
+            // **걸러내지는 않는다** — 미탐은 돈이 나가고 오탐은 짜증에 그친다.
             if (event.riskSignal == RiskSignal.HIGH) {
+                val stage = event.stage
+                val tint = if (stage != null) MaterialTheme.colorScheme.error else caution
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-                            RoundedCornerShape(8.dp),
-                        )
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .border(1.dp, tint, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
                     Icon(
                         Icons.Filled.Warning,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = tint,
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        "위험 신호: ${event.matchedPhrase}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
+                        if (stage != null) "${stage}단계 ${event.stageLabel.orEmpty()}".trim()
+                        else "주의 필요",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tint,
                     )
                 }
             }

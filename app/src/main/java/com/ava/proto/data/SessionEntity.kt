@@ -4,15 +4,19 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.ava.proto.capture.Channel
 
+/**
+ * 두 값뿐이고 하향 전이가 없다.
+ *
+ * 예전에는 "백엔드 확정" 자리로 `ALERT`를 하나 더 뒀는데, 그 확정이라는 것이 결국 모델
+ * 판정이고 그건 이미 `SUSPECTED`를 만든 근거였다. 세션에 도달할 경로가 없는 값이 상태
+ * 전이 코드에 분기를 하나 더 만들고 있어 걷어냈다.
+ */
 enum class SessionState {
     /** 한 채널에서 위험 신호가 잡혀 시작된 상태. */
     SUSPECTED,
 
     /** 같은 시간 창 안에 다른 채널에서도 신호가 잡혀 격상된 상태. */
     ESCALATED,
-
-    /** 백엔드(Gemini) 분류로 확정된 상태. 현재 코드로는 도달하지 않는다 — 백엔드 미연동. */
-    ALERT,
 }
 
 @Entity(tableName = "sessions")

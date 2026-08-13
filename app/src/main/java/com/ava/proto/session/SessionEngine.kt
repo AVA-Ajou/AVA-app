@@ -22,9 +22,6 @@ private const val WINDOW_MILLIS = 10 * 60 * 1000L // 10분
  * 강도 조절 장치다. 통화 하나만으로 끝나는 보이스피싱도(STT가 붙으면) 이 로직에서
  * 놓치지 않는다.
  *
- * ALERT는 백엔드(Gemini) 분류로만 도달하도록 설계돼 있다. 백엔드가 아직 연결되지 않아
- * 현재 코드 경로로는 SUSPECTED/ESCALATED까지만 도달한다.
- *
  * 시간 창은 이벤트가 실제로 일어난 시각([EventEntity.capturedAt])을 기준으로 계산한다 —
  * 처리 시각(now())을 쓰면 최대 15분 지연되는 통화 채널이 실제로는 가까운 시각에 있었던
  * 다른 채널과 엮이지 못하거나, 반대로 무관한 최근 이벤트와 잘못 엮일 수 있다.
@@ -47,11 +44,22 @@ class SessionEngine(
         // 신호가 없는 이벤트(예: STT 대기 중인 통화 녹음, 분류 실패, 또는 실제로 무해하다고
         // 분류된 이벤트)는 기록만 하고 세션에는 영향을 주지 않는다.
         if (event.riskSignal == RiskSignal.NONE) {
-            eventDao.insert(event)
+            save(event)
             return event
         }
 
         return mutex.withLock { fuseIntoSession(event) }
+    }
+
+    /**
+     * [EventEntity.id]가 있으면 그 행을 갱신하고, 없으면 새로 넣는다.
+     *
+     * 같은 통화 파일을 다시 분석할 때 행이 쌓이지 않게 하려는 것이다 — 쌓이면 탐지율·오탐률
+     * 같은 숫자가 전부 부풀려진다. 기존 행을 찾는 일은 [com.ava.proto.pipeline.DetectionPipeline]이
+     * 하고, 여기서는 id 유무만 본다.
+     */
+    private suspend fun save(event: EventEntity) {
+        if (event.id != 0L) eventDao.update(event) else eventDao.insert(event)
     }
 
     private suspend fun fuseIntoSession(event: EventEntity): EventEntity {
@@ -71,11 +79,9 @@ class SessionEngine(
         val channels = session.channelsInvolved.toMutableSet()
         val isNewChannel = channels.add(event.channel)
 
-        val newState = when {
-            session.state == SessionState.ALERT -> SessionState.ALERT
-            isNewChannel && channels.size >= 2 -> SessionState.ESCALATED
-            else -> session.state
-        }
+        // 하향 전이는 없다 — 한 번 격상된 세션은 이후 이벤트로 SUSPECTED로 되돌아가지 않는다.
+        val newState =
+            if (isNewChannel && channels.size >= 2) SessionState.ESCALATED else session.state
 
         val updatedSession = session.copy(
             state = newState,
@@ -97,7 +103,7 @@ class SessionEngine(
         }
 
         val savedEvent = event.copy(sessionId = sessionId)
-        eventDao.insert(savedEvent)
+        save(savedEvent)
 
         val finalSession = updatedSession.copy(id = sessionId)
         val channelNames = channels.map(Channel::name).toSet()

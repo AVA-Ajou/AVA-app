@@ -3,20 +3,10 @@ package com.ava.proto.demo
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.documentfile.provider.DocumentFile
-import com.ava.proto.R
-import com.ava.proto.capture.RecordingFolder
-import com.ava.proto.pipeline.DetectionPipeline
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private const val TAG = "DemoInjector"
 
@@ -42,26 +32,26 @@ private val SMS_NORMAL_MESSAGES = listOf(
  * NotificationCaptureService가 이 알림을 수신해 실제 탐지 파이프라인을 타므로,
  * 실제 카카오톡·문자 수신 경로와 동일한 코드 경로를 검증할 수 있다.
  *
- * - [injectKakao]: Proto 앱 알림 발생 → 서비스가 KAKAO 채널로 수신
- * - [injectSms]: Proto 앱 알림 발생 → 서비스가 SMS 채널로 수신
- * - [injectCallRecording]: 보이스피싱 음성 파일을 SAF 폴더에 복사
- *   → FileObserver가 감지 → RecordingScanWorker → Gemini STT → 분류 → 알림
+ * **파이프라인을 직접 들고 있지 않은 것이 이 클래스의 요점이다.** 알림을 띄우는 것 외에
+ * 탐지 계층으로 가는 통로가 없어야, 데모 편의를 위해 파이프라인을 우회하는 코드가
+ * 나중에 슬그머니 끼어들 수 없다.
+ *
+ * 통화 채널에는 주입할 것이 없다 — 폴더에 파일을 넣으면 `CallRecordingWatcher`가 잡는다.
  */
-class DemoInjector(private val context: Context, private val pipeline: DetectionPipeline) {
+class DemoInjector(private val context: Context) {
 
     private var kakaoNormalIndex = 0
     private var smsNormalIndex = 0
 
+    // minSdk 26 이 곧 채널 도입 버전(O)이라 버전 분기가 필요 없다.
     init {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                DEMO_NOTIF_CHANNEL_ID,
-                "데모 메시지",
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
-            context.getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            DEMO_NOTIF_CHANNEL_ID,
+            "데모 메시지",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        )
+        context.getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(channel)
     }
 
     /**
@@ -116,40 +106,6 @@ class DemoInjector(private val context: Context, private val pipeline: Detection
             title = title,
             text = text,
         )
-    }
-
-    /**
-     * 보이스피싱 음성 파일(res/raw/demo_call.m4a)을 SAF 녹음 폴더에 복사한다.
-     *
-     * 복사 완료 → CallRecordingWatcher(FileObserver)가 CLOSE_WRITE 감지
-     * → RecordingScanWorker 즉시 실행 → Gemini STT → 분류 → 알림
-     * 사용자 추가 액션 불필요.
-     *
-     * @return 복사 성공 여부 (폴더 미연결 시 false)
-     */
-    suspend fun injectCallRecording(): Boolean = withContext(Dispatchers.IO) {
-        val folderUri = RecordingFolder.get(context) ?: run {
-            Log.w(TAG, "녹음 폴더 미연결")
-            return@withContext false
-        }
-        val folder = DocumentFile.fromTreeUri(context, folderUri) ?: return@withContext false
-
-        val fileName = "Call recording_" +
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".m4a"
-
-        return@withContext try {
-            val newFile = folder.createFile("audio/mp4", fileName) ?: return@withContext false
-            context.resources.openRawResource(R.raw.demo_call).use { input ->
-                context.contentResolver.openOutputStream(newFile.uri)?.use { output ->
-                    input.copyTo(output)
-                }
-            }
-            Log.d(TAG, "데모 음성 파일 복사 완료: $fileName → FileObserver가 자동 탐지 예정")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "데모 음성 파일 복사 실패", e)
-            false
-        }
     }
 
     private fun postDemoNotification(id: Int, demoChannel: String, title: String, text: String) {

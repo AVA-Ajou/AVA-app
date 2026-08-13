@@ -75,18 +75,18 @@ fun SimulationTab(
                     SimulationRow(
                         icon = Icons.Filled.Call,
                         tint = MaterialTheme.colorScheme.error,
-                        title = "통화 녹음",
-                        description = "샘플 음성을 폴더에 복사해 STT와 분류까지 실제로 태웁니다.",
+                        title = "통화 전사본",
+                        description = "녹음 폴더에 넣어둔 통화 텍스트(.txt)를 지금 분석합니다.",
                         enabled = idle,
                         onRun = onDemoCall,
+                        runLabel = "분석",
                     )
                 }
             }
 
             when (callDemoStep) {
-                CallDemoStep.COPYING -> ProgressPanel(text = "음성 파일 복사 중...")
                 CallDemoStep.ANALYZING -> ProgressPanel(
-                    text = "AI가 녹음을 분석 중... (수 초~수십 초 소요)",
+                    text = "AI가 통화 내용을 분석 중... (파일당 수십 초 소요)",
                     emphasize = true,
                     onCancel = onCancelCallDemo,
                 )

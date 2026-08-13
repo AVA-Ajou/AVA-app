@@ -4,8 +4,11 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
-import kotlinx.coroutines.flow.Flow
 
+/**
+ * 세션은 화면에 목록으로 나오지 않는다 — 사용자가 읽는 것은 이벤트 카드와 시스템 알림이고,
+ * 세션은 그 뒤에서 다채널 격상을 판단하는 상태일 뿐이다. 그래서 `observe…` 류 쿼리가 없다.
+ */
 @Dao
 interface SessionDao {
     /**
@@ -29,7 +32,4 @@ interface SessionDao {
 
     @Update
     suspend fun update(session: SessionEntity)
-
-    @Query("SELECT * FROM sessions ORDER BY updatedAt DESC LIMIT 50")
-    fun observeRecent(): Flow<List<SessionEntity>>
 }

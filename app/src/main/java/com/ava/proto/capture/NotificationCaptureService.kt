@@ -5,6 +5,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.ava.proto.ProtoApplication
+import com.ava.proto.notification.AlertNotifier
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,21 @@ class NotificationCaptureService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val allowlist = TargetPackages.allowlist(this)
         if (sbn.packageName !in allowlist) return
+
+        // 우리가 띄운 **경보**는 되잡지 않는다.
+        //
+        // 자기 앱을 감시 대상에 넣은 건 데모 버튼이 실제 경로를 그대로 타게 하려던 것인데,
+        // 그 통로로 AlertNotifier의 경보까지 되돌아온다. 통화 한 건을 넣었더니 경보 → SMS
+        // 이벤트 → 다시 경보로 3초 간격 세 바퀴가 돌았고, 이벤트가 1건에서 4건으로 늘었다.
+        // 세션이 ESCALATED에 닿아 우연히 멈췄을 뿐 막힌 게 아니다.
+        //
+        // 데모 알림은 다른 채널(demo_messages)을 쓰므로 경보 채널만 걸러내면 데모는 그대로
+        // 살아남는다.
+        if (sbn.packageName == TargetPackages.PROTO_APP &&
+            sbn.notification.channelId == AlertNotifier.CHANNEL_ID
+        ) {
+            return
+        }
 
         // Proto 앱 자체 알림(데모용)은 extras의 "demo_channel" 힌트로 채널을 구분한다.
         // 실제 카카오톡·문자 앱은 패키지명으로 구분한다.

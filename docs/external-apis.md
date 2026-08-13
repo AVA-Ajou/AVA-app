@@ -1,61 +1,55 @@
-# 외부 API 연동
+# 서버 연동
 
-HTTP 클라이언트 라이브러리를 쓰지 않는다. `HttpsURLConnection` + `org.json`만으로 호출한다
-(의존성 추가 없이 동작하는 게 프로토타입 단계에서 더 낫다는 판단).
-따라서 새 API를 붙일 때도 Retrofit/OkHttp를 끌어들이기 전에 이 방식으로 충분한지 먼저 볼 것.
+**외부 API를 쓰지 않는다.** 앱이 부르는 것은 우리가 띄운 탐지 서버(`../Detection-Server`)
+하나뿐이다.
 
-## API 키 주입 경로
+예전에는 Groq Whisper(STT)와 Groq LLM(분류)에 매여 있었다. 걷어낸 이유는 두 가지다.
 
-`local.properties`(gitignore됨) → `app/build.gradle.kts`가 직접 파싱 → `buildConfigField` → `BuildConfig.*`
+- 서버 모델(Gemma 4)이 **오디오를 직접 받는다.** 전사를 남에게 맡길 이유가 없어졌다
+- **통화 음성이 외부 업체로 나갔다.** `READ_CALL_LOG` 조차 쓰지 않기로 하며 권한을 깎아온
+  이 프로젝트에서 앞뒤가 맞지 않았다
+
+## 주소 주입
+
+`local.properties` → `buildConfigField` 경로만 쓴다. 코드나 커밋에 주소를 넣지 않는다.
 
 ```properties
-sdk.dir=/path/to/android/sdk
-GROQ_API_KEY=gsk_...
-GEMINI_API_KEY=...     # 선택 — STT 폴백용
+DETECTION_SERVER_URL=http://localhost:8000
 ```
 
-`project.findProperty()`는 `local.properties`를 읽지 못하므로 `Properties().load()`로 직접 읽는다.
-키가 없으면 빈 문자열이 들어가고, 런타임 폴백이 그 상태를 처리한다 — 빌드는 깨지지 않는다.
+비어 있으면 판정은 `LocalKeywordClassificationClient`로 떨어지고 전사는 하지 않는다
+(이벤트는 `PENDING_TRANSCRIPTION`으로 남는다). 설정이 덜 돼도 앱은 떠야 한다.
 
-## 구현체 선택 (`ProtoApplication`, 모두 `by lazy`)
+에뮬레이터·실기기에서는 `adb reverse tcp:8000 tcp:8000` 으로 붙인다. `10.0.2.2` 직결은
+맥 방화벽이 TCP를 막아 타임아웃난다 — ICMP는 통과해서 `ping`은 성공하므로 헷갈리기 쉽다.
 
+평문 HTTP는 `res/xml/network_security_config.xml`이 허용한 호스트에서만 열린다.
+
+## 호출하는 곳
+
+| | 언제 | 실패하면 |
+|---|---|---|
+| `POST /transcribe` | `RecordingScanWorker`가 새 음성 파일을 찾았을 때 | `null` → `PENDING_TRANSCRIPTION`. 다음 스캔에서 다시 시도한다 |
+| `POST /analyze` | 텍스트가 있는 모든 이벤트 | **예외를 던진다** → 호출부가 `CLASSIFICATION_FAILED`로 기록 |
+
+**실패 처리 계약이 다르다.** 전사는 "아직 못 함"이라 다시 시도할 수 있고, 분류는 "판정을
+못 했다"를 `RiskSignal.NONE`("무해함")과 구분해야 하기 때문이다.
+
+## 분류는 호출 한 번이다
+
+예전에는 두 번 불렀다 — 위험도를 먼저 받고, 문턱을 넘으면 단계·근거를 다시 요청했다.
+단계가 원본 Gemma의 160토큰 생성에 딸려 있어 **판정 한 건에 16초**가 걸렸다.
+
+지금은 단계를 서버의 정규식(`../Detection-Server/signals.py`)이 뽑으므로 위험도와 같은
+응답에 함께 온다. 근거 문장은 화면에 쓰지 않으므로 아예 요청하지 않는다(`reason`을 켜지
+않는다). **두 번째 호출을 되살리지 말 것.**
+
+```json
+요청   {"text": "…전사본…", "task": "voice"}
+응답   {"risk": 93.2, "stage": 2, "stage_label": "정보·계좌", "stage_evidence": ["…"]}
 ```
-classificationClient : GROQ_API_KEY 있음 → GroqClassificationClient
-                       없음             → LocalKeywordClassificationClient
 
-audioTranscriber     : GROQ_API_KEY 있음 → GroqAudioTranscriber
-                       GEMINI_API_KEY만  → GeminiAudioTranscriber
-                       둘 다 없음        → null (STT 생략 → PENDING_TRANSCRIPTION)
-```
+`task`는 서버가 어느 어댑터를 켤지 고르는 값이다. 서버가 어댑터를 하나만 올리므로 앱에서는
+`"voice"` 상수로 고정돼 있다 — 베이스가 다른 어댑터를 섞으면 확률이 조용히 틀어진다.
 
-## 분류 — `GroqClassificationClient`
-
-- `POST https://api.groq.com/openai/v1/chat/completions`, 모델 `llama-3.3-70b-versatile`
-- `response_format: json_object`, `temperature: 0`
-- 시스템 프롬프트가 `{"is_phishing": bool, "reason": "한 문장"}` 형태를 강제한다
-- `is_phishing == true` → `RiskSignal.HIGH` + `matchedPhrase = reason`, false → `NONE`
-
-**비-200 응답에서는 예외를 던진다.** 이건 실수가 아니라 계약이다 —
-`DetectionPipeline`이 그 예외를 잡아 `EventStatus.CLASSIFICATION_FAILED`로 기록해야
-"분류 실패"와 "무해함 확인"이 구분된다. 여기서 조용히 `NONE`을 돌려주면 그 구분이 사라진다.
-
-키워드 폴백(`KeywordFilter`)은 16개 고위험 문구 단순 `contains` 매칭이다.
-정교하게 우회한 사기 문구는 놓치지만, 그건 이 구현체의 한계일 뿐 인터페이스나 파이프라인의 한계가 아니다.
-
-## STT — `GroqAudioTranscriber`
-
-- `POST https://api.groq.com/openai/v1/audio/transcriptions`, 모델 `whisper-large-v3`, `language=ko`
-- multipart/form-data로 오디오 바이트를 직접 전송 (base64 변환 없음)
-- 타임아웃 60초
-- **실패 시 예외 대신 `null`을 돌려준다** — `AudioTranscriber` 계약이 그렇다.
-  `RecordingScanWorker`는 null을 받으면 텍스트 없는 `CapturedEvent`를 만들고,
-  파이프라인이 `PENDING_TRANSCRIPTION`으로 기록한다. 이벤트 자체를 유실시키지 않는다.
-
-분류와 STT의 실패 처리 방식이 다르다(예외 vs null)는 점에 유의 —
-각 인터페이스의 KDoc에 명시된 계약이므로 새 구현체도 이를 따라야 한다.
-
-## 파일 단위 실패 격리
-
-`RecordingScanWorker`는 파일 하나의 처리가 실패해도 `try/catch`로 삼키고 다음 파일로 넘어간다.
-문제 파일 하나가 이후 모든 실행을 막는 상황을 피하기 위한 것이다.
-다만 실패한 파일은 이벤트로 기록되지 않으므로 dedup 목록에도 안 들어가 다음 스캔에서 재시도된다.
+스펙은 `../Detection-Server/docs/api.md`.

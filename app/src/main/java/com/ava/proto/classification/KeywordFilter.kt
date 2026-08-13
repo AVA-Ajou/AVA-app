@@ -7,8 +7,8 @@ import com.ava.proto.data.RiskSignal
  * 이걸 감싸서 [ClassificationClient] 대역으로 쓰고 있을 뿐이고, 텍스트가 있는 이벤트는
  * 이 결과와 무관하게 전부 분류 단계를 거친다.
  *
- * [RiskSignal.LOW]는 아직 이 필터가 만들어내지 않는다 — 백엔드(Gemini) 분류가 붙으면
- * 애매한 경우를 LOW로 내려보내는 역할을 맡긴다. 지금은 매칭되면 HIGH, 아니면 NONE뿐이다.
+ * [RiskSignal.LOW]는 이 필터가 만들어내지 않는다 — 애매한 경우를 LOW로 내려보내는 일은
+ * 모델 서버가 준 위험도를 접는 쪽이 맡는다. 여기서는 매칭되면 HIGH, 아니면 NONE뿐이다.
  */
 object KeywordFilter {
 

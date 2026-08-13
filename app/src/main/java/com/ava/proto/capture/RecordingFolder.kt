@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
-import androidx.documentfile.provider.DocumentFile.fromTreeUri
 import android.provider.DocumentsContract
 
 private const val PREFS = "proto_prefs"
@@ -26,6 +25,15 @@ private val SAMSUNG_CALL_RECORDING = Regex(
     """^(Call recording|통화[ _]?녹음)[_ ]\d{8}[_ ]\d{6}.*\.m4a$""",
     RegexOption.IGNORE_CASE,
 )
+
+/**
+ * 이미 전사된 통화. 파일 내용이 곧 전사본이라 STT를 건너뛴다.
+ *
+ * 실기기 없이 탐지 경로 전체를 태워보려고 둔 통로다. 음성 파일을 넣으면 서버 전사를 거쳐야
+ * 하는데, 그 단계는 지금 확인하려는 부분이 아니고 실제 녹음과 수십 초가 필요하다.
+ * `.txt`를 떨어뜨리면 전사가 끝난 직후 지점부터 실제 경로를 그대로 탄다.
+ */
+private val TRANSCRIPT_FILE = Regex(""".+\.txt$""", RegexOption.IGNORE_CASE)
 
 /**
  * 사용자가 SAF로 지정한 통화 녹음 폴더를 관리한다.
@@ -64,16 +72,29 @@ object RecordingFolder {
         val treeUri = get(context) ?: return emptyList()
         val folder = DocumentFile.fromTreeUri(context, treeUri) ?: return emptyList()
         return folder.listFiles()
-            .filter { it.isFile && isSamsungCallRecording(it.name) && identityOf(it) !in alreadyProcessedNames }
+            .filter { it.isFile && isCallSource(it.name) && identityOf(it) !in alreadyProcessedNames }
             .sortedBy { it.lastModified() }
     }
 
     /** 파일명이 없는 드문 경우를 대비해 URI를 대신 쓴다 — dedup 판별과 기록에 항상 같은 값을 쓴다. */
     fun identityOf(file: DocumentFile): String = file.name ?: file.uri.toString()
 
-    /** 삼성 갤럭시 통화 녹음 파일명인지 확인한다. null(이름 없음)은 false. */
-    fun isSamsungCallRecording(name: String?): Boolean =
+    /**
+     * 통화 채널로 처리할 파일인가 — 삼성 녹음이거나 이미 전사된 텍스트.
+     *
+     * `FileObserver` 필터([CallRecordingWatcher])와 폴더 스캔 필터([findNewFiles])가 **이 함수
+     * 하나를** 쓴다. 갈라지면 한쪽에만 걸리는 파일이 생겨, 즉시 감지는 되는데 스캔에서는
+     * 안 보이는(또는 그 반대) 버그가 난다.
+     */
+    fun isCallSource(name: String?): Boolean =
+        isSamsungCallRecording(name) || isTranscript(name)
+
+    private fun isSamsungCallRecording(name: String?): Boolean =
         name != null && SAMSUNG_CALL_RECORDING.matches(name)
+
+    /** 전사본 텍스트 파일인지 확인한다. 이 경우 STT를 건너뛴다. */
+    fun isTranscript(name: String?): Boolean =
+        name != null && TRANSCRIPT_FILE.matches(name)
 
     /**
      * SAF tree URI를 실제 파일시스템 경로로 변환한다.

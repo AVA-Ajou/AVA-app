@@ -43,7 +43,10 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val app = context.applicationContext as ProtoApplication
 
-                val viewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory(app.database, app.demoInjector, context))
+                // ViewModel 에는 Activity 가 아니라 Application 을 넘긴다 — ViewModel 은 화면
+                // 회전을 넘어 살아남으므로 Activity 를 들고 있으면 그대로 누수가 된다.
+                val viewModel: HomeViewModel =
+                    viewModel(factory = HomeViewModel.Factory(app.database, app.demoInjector, app))
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val isBusy by viewModel.isBusy.collectAsStateWithLifecycle()
                 val callDemoStep by viewModel.callDemoStep.collectAsStateWithLifecycle()
@@ -91,7 +94,7 @@ class MainActivity : ComponentActivity() {
                     onScanNow = viewModel::scanNow,
                     onDemoKakao = viewModel::demoKakao,
                     onDemoSms = viewModel::demoSms,
-                    onDemoCall = viewModel::demoCall,
+                    onDemoCall = viewModel::rescanCallFolder,
                     onCancelCallDemo = viewModel::cancelCallDemo,
                     onStartAutoTestKakao = { viewModel.startAutoTest(isKakao = true) },
                     onStartAutoTestSms = { viewModel.startAutoTest(isKakao = false) },

@@ -3,12 +3,9 @@ package com.ava.proto.notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.ava.proto.data.SessionEntity
-
-private const val CHANNEL_ID = "scam_alerts"
 
 /**
  * 세션 상태 변화에 따라 로컬 알림을 띄운다.
@@ -19,16 +16,15 @@ private const val CHANNEL_ID = "scam_alerts"
  */
 class AlertNotifier(private val context: Context) {
 
+    // minSdk 26 이 곧 채널 도입 버전(O)이라 버전 분기가 필요 없다.
     init {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "보이스피싱 의심 경보",
-                NotificationManager.IMPORTANCE_HIGH,
-            )
-            context.getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            AlertNotifier.CHANNEL_ID,
+            "보이스피싱 의심 경보",
+            NotificationManager.IMPORTANCE_HIGH,
+        )
+        context.getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(channel)
     }
 
     fun notifySuspected(session: SessionEntity, channels: Set<String>) {
@@ -53,7 +49,7 @@ class AlertNotifier(private val context: Context) {
         // POST_NOTIFICATIONS 런타임 권한만 보던 이전 코드는 후자를 놓치고 있었다.
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, AlertNotifier.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle(title)
             .setContentText(text)
@@ -62,5 +58,13 @@ class AlertNotifier(private val context: Context) {
             .build()
 
         NotificationManagerCompat.from(context).notify(session.id.toInt(), notification)
+    }
+
+    companion object {
+        /**
+         * 경보 알림 채널. [com.ava.proto.capture.NotificationCaptureService]가 우리 경보를
+         * 되잡지 않으려고 이 값을 본다 — private으로 두면 그 필터를 만들 수 없다.
+         */
+        const val CHANNEL_ID = "scam_alerts"
     }
 }
