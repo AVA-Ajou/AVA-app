@@ -23,8 +23,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 위험도는 모델이 정답 토큰 자리의 로짓에서 읽은 **보정된 확률**이다. 앱은 이 값을 다시
 계산하지 않는다 — 근거는 `../Voice-Detection/docs/METHOD.md`.
 
-`SessionState.ALERT`는 자리만 잡아둔 값으로 현재 코드 경로로는 도달하지 않는다.
-
 ## Critical Rules
 
 - **권한을 늘리지 말 것.** `READ_CALL_LOG` / `RECEIVE_SMS` / `READ_SMS` /
@@ -229,9 +227,8 @@ adb push 통화녹음_테스트.txt /sdcard/Recordings/
 - `docs/architecture.md` — 계층 구조·시퀀스·세션 상태 전이 다이어그램(Mermaid), 융합 규칙 표
 - `docs/data-model.md` — Room 엔티티/enum 의미론, DAO 쿼리 의도, 마이그레이션 정책
 - `docs/capture-channels.md` — 채널별 캡처 방식, 권한 모델과 배제 근거, 삼성 파일명 패턴, SAF 경로 변환
+- `docs/external-apis.md` — 서버 호출 지점(`/analyze`·`/transcribe`)과 계층별 실패 처리 계약
 - `README.md` — 데모 시연 절차와 기기 설정 안내
-  (일부 내용이 최신 코드와 어긋난다: 세션 목록 UI는 제거됐고, 분류의 기본 경로는 파인튜닝
-  모델 서버다)
 
 **다른 저장소** — 판정을 실제로 하는 쪽이다. 앱을 고치기 전에 읽을 것.
 

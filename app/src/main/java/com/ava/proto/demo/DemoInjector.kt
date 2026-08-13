@@ -3,13 +3,10 @@ package com.ava.proto.demo
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.ava.proto.R
-import com.ava.proto.pipeline.DetectionPipeline
 
 private const val TAG = "DemoInjector"
 
@@ -35,25 +32,26 @@ private val SMS_NORMAL_MESSAGES = listOf(
  * NotificationCaptureService가 이 알림을 수신해 실제 탐지 파이프라인을 타므로,
  * 실제 카카오톡·문자 수신 경로와 동일한 코드 경로를 검증할 수 있다.
  *
- * - [injectKakao]: Proto 앱 알림 발생 → 서비스가 KAKAO 채널로 수신
- * - [injectSms]: Proto 앱 알림 발생 → 서비스가 SMS 채널로 수신
- *   → FileObserver가 감지 → RecordingScanWorker → 서버 전사 → 분류 → 알림
+ * **파이프라인을 직접 들고 있지 않은 것이 이 클래스의 요점이다.** 알림을 띄우는 것 외에
+ * 탐지 계층으로 가는 통로가 없어야, 데모 편의를 위해 파이프라인을 우회하는 코드가
+ * 나중에 슬그머니 끼어들 수 없다.
+ *
+ * 통화 채널에는 주입할 것이 없다 — 폴더에 파일을 넣으면 `CallRecordingWatcher`가 잡는다.
  */
-class DemoInjector(private val context: Context, private val pipeline: DetectionPipeline) {
+class DemoInjector(private val context: Context) {
 
     private var kakaoNormalIndex = 0
     private var smsNormalIndex = 0
 
+    // minSdk 26 이 곧 채널 도입 버전(O)이라 버전 분기가 필요 없다.
     init {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                DEMO_NOTIF_CHANNEL_ID,
-                "데모 메시지",
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
-            context.getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            DEMO_NOTIF_CHANNEL_ID,
+            "데모 메시지",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        )
+        context.getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(channel)
     }
 
     /**

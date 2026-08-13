@@ -3,7 +3,10 @@
 
     <!-- 우리 앱 자신의 위험 알림을 띄우기 위한 표준 런타임 권한 (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Gemini API로 통화 녹음을 전사하기 위해 필요. -->
+    <!--
+        탐지 서버(../Detection-Server) 호출용. 판정(/analyze)과 전사(/transcribe) 둘 다
+        우리 서버가 하므로 외부 API로 나가는 트래픽은 없다.
+    -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
@@ -22,8 +25,7 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

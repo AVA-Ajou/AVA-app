@@ -20,7 +20,7 @@ flowchart TD
     subgraph cls["classification — 판정"]
         CC["ClassificationClient"]
         GCC["BackendClassificationClient<br/>서버 /analyze"]
-        LKC["LocalKeywordClassificationClient<br/>(키 없을 때 폴백)"]
+        LKC["LocalKeywordClassificationClient<br/>(서버 주소 없을 때 대역)"]
     end
 
     DP["DetectionPipeline<br/>유일한 조립 지점"]
@@ -32,7 +32,6 @@ flowchart TD
     CRW -- "CLOSE_WRITE / MOVED_TO" --> RSW
     RSW --> AT
     AT -.-> GAT
-    AT -.-> GEM
     RSW --> DP
     DP --> CC
     CC -.-> GCC
@@ -54,17 +53,29 @@ sequenceDiagram
     participant P as DetectionPipeline
     participant S as SessionEngine
 
-    FS->>W: CLOSE_WRITE (Call recording_*.m4a)
-    W->>WM: enqueue(OneTime, TAG_IMMEDIATE)
+    FS->>W: CLOSE_WRITE (Call recording_*.m4a 또는 *.txt)
+    W->>WM: enqueueNow() — 유일 작업으로 줄 세움
     WM->>SW: doWork()
-    SW->>SW: eventDao.sourceLabelsForChannel(CALL) 로 dedup
-    SW->>STT: transcribe(audioUri)
-    STT-->>SW: 전사 텍스트 또는 null
+    SW->>SW: eventDao.analyzedSourceLabels(CALL) 로 dedup
+    alt .txt (이미 전사된 통화)
+        SW->>SW: 파일 내용을 그대로 전사본으로 사용
+    else .m4a
+        SW->>STT: transcribe(audioUri)
+        STT-->>SW: 전사 텍스트 또는 null
+    end
     SW->>P: process(CapturedEvent(text=전사 or null))
-    P->>P: text == null → PENDING_TRANSCRIPTION (분류 생략)
+    alt text == null
+        P->>P: PENDING_TRANSCRIPTION (분류 생략)
+    else
+        P->>P: classify() → 위험도 + 진행 단계
+    end
     P->>S: ingest(EventEntity)
-    S->>S: RiskSignal.NONE → 기록만, 세션 미형성
+    S->>S: RiskSignal.NONE 이면 기록만, 세션 미형성
 ```
+
+`enqueueNow()`가 유일한 즉시 실행 진입점이다. `WorkManager.enqueue()`를 직접 부르면 파일이
+연달아 들어올 때 워커가 동시에 여러 개 떠 같은 파일을 두 번 판정하고, 서버가 순전파를 락으로
+직렬화하므로 늦은 쪽이 읽기 타임아웃으로 죽는다.
 
 `RecordingScanWorker`는 15분 주기(`UNIQUE_WORK_NAME = "recording_scan"`)로도 돌지만, 실사용 경로는
 `FileObserver`의 즉시 실행이다. 주기 실행은 앱이 죽어 있던 동안 쌓인 파일을 뒤늦게 줍는 안전망이다.
@@ -76,10 +87,11 @@ stateDiagram-v2
     [*] --> SUSPECTED: 첫 위험 신호 (채널 1개)<br/>notifySuspected()
     SUSPECTED --> ESCALATED: 같은 창 안 다른 채널 신호<br/>notifyEscalation()
     ESCALATED --> ESCALATED: 추가 신호 (알림 재발송 없음)
-    SUSPECTED --> ALERT: 백엔드 확정 (미연동, 현재 도달 불가)
-    ESCALATED --> ALERT: 백엔드 확정 (미연동, 현재 도달 불가)
-    ALERT --> ALERT: 하향 전이 없음
 ```
+
+**상태는 둘뿐이고 하향 전이가 없다.** 예전에는 "백엔드 확정" 자리로 `ALERT`를 하나 더 뒀는데,
+그 확정이라는 것이 결국 모델 판정이고 그건 이미 `SUSPECTED`를 만든 근거였다 — 도달할 경로가
+없는 값이 전이 코드에 분기만 하나 더 만들고 있어 걷어냈다.
 
 핵심 설계 의도: **다채널 여부는 "알릴지 말지"의 문이 아니라 "얼마나 급하게 알릴지"의 강도 조절기다.**
 채널 하나만으로도 즉시 `SUSPECTED` + 알림이 나간다. 통화 한 건으로 끝나는 보이스피싱을 놓치지 않기 위한 결정.
@@ -96,7 +108,11 @@ stateDiagram-v2
 
 ## 데모 경로가 실제 경로와 같은 이유
 
-`DemoInjector.injectKakao()/injectSms()`는 파이프라인을 직접 호출하지 않는다.
+`DemoInjector`는 **파이프라인을 아예 들고 있지 않다** — 생성자로 받던 참조를 한 번도 쓰지 않아
+걷어냈다. 알림을 띄우는 것 말고 탐지 계층으로 가는 통로가 없어야, 데모 편의를 위해 파이프라인을
+우회하는 코드가 나중에 슬그머니 끼어들 수 없다.
+
+`injectKakao()/injectSms()`는 파이프라인을 직접 호출하지 않는다.
 **Proto 앱이 자기 이름으로 Android 알림을 띄우고**, `NotificationCaptureService`가 그걸 다시 잡는다.
 따라서 데모 버튼도 실제 카카오톡·문자 수신과 완전히 동일한 코드 경로를 탄다.
 채널 구분은 알림 extras의 `demo_channel` 힌트로 한다.

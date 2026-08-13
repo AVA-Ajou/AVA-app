@@ -67,7 +67,7 @@ class ProtoApplication : Application() {
             ?.let { ServerAudioTranscriber(this, it.trimEnd('/')) }
     }
 
-    val demoInjector by lazy { DemoInjector(this, detectionPipeline) }
+    val demoInjector by lazy { DemoInjector(this) }
 
     val callRecordingWatcher by lazy { CallRecordingWatcher(this) }
 

@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
-import androidx.documentfile.provider.DocumentFile.fromTreeUri
 import android.provider.DocumentsContract
 
 private const val PREFS = "proto_prefs"
@@ -80,12 +79,17 @@ object RecordingFolder {
     /** 파일명이 없는 드문 경우를 대비해 URI를 대신 쓴다 — dedup 판별과 기록에 항상 같은 값을 쓴다. */
     fun identityOf(file: DocumentFile): String = file.name ?: file.uri.toString()
 
-    /** 통화 채널로 처리할 파일인가 — 삼성 녹음이거나 이미 전사된 텍스트. */
+    /**
+     * 통화 채널로 처리할 파일인가 — 삼성 녹음이거나 이미 전사된 텍스트.
+     *
+     * `FileObserver` 필터([CallRecordingWatcher])와 폴더 스캔 필터([findNewFiles])가 **이 함수
+     * 하나를** 쓴다. 갈라지면 한쪽에만 걸리는 파일이 생겨, 즉시 감지는 되는데 스캔에서는
+     * 안 보이는(또는 그 반대) 버그가 난다.
+     */
     fun isCallSource(name: String?): Boolean =
         isSamsungCallRecording(name) || isTranscript(name)
 
-    /** 삼성 갤럭시 통화 녹음 파일명인지 확인한다. null(이름 없음)은 false. */
-    fun isSamsungCallRecording(name: String?): Boolean =
+    private fun isSamsungCallRecording(name: String?): Boolean =
         name != null && SAMSUNG_CALL_RECORDING.matches(name)
 
     /** 전사본 텍스트 파일인지 확인한다. 이 경우 STT를 건너뛴다. */

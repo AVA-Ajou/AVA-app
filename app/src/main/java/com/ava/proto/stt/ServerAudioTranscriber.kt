@@ -17,6 +17,13 @@ private const val TAG = "ServerTranscriber"
 private const val TIMEOUT_MS = 300_000
 
 /**
+ * 어느 모델로 받아적을지 서버에 알리는 값. 전사는 **어댑터를 끄고** 하므로 결과에 영향은
+ * 없고 베이스 모델을 특정하는 용도다. 생성자 인자로 열어뒀었지만 서버가 어댑터를 하나만
+ * 올리므로 다른 값을 넘길 일이 없다.
+ */
+private const val TASK = "voice"
+
+/**
  * 통화 녹음을 **우리 서버**로 보내 글로 옮긴다.
  *
  * 예전에는 Groq Whisper(실패 시 Gemini)를 썼다. 두 가지가 걸렸다 — 외부 API 키에 매이고,
@@ -29,7 +36,6 @@ private const val TIMEOUT_MS = 300_000
 class ServerAudioTranscriber(
     private val context: Context,
     private val baseUrl: String,
-    private val task: String = "voice",
 ) : AudioTranscriber {
 
     override suspend fun transcribe(audioUri: String): String? = withContext(Dispatchers.IO) {
@@ -61,7 +67,7 @@ class ServerAudioTranscriber(
             DataOutputStream(connection.outputStream).use { out ->
                 out.writeBytes("--$boundary\r\n")
                 out.writeBytes("Content-Disposition: form-data; name=\"task\"\r\n\r\n")
-                out.writeBytes("$task\r\n")
+                out.writeBytes("$TASK\r\n")
 
                 out.writeBytes("--$boundary\r\n")
                 out.writeBytes(

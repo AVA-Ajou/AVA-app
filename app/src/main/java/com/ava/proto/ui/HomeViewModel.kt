@@ -1,11 +1,12 @@
 package com.ava.proto.ui
 
+import android.app.Application
 import android.content.Context
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
-import com.ava.proto.capture.Channel
 import com.ava.proto.capture.RecordingScanWorker
 import com.ava.proto.data.AppDatabase
 import com.ava.proto.data.EventEntity
@@ -40,11 +41,20 @@ enum class CallDemoResult { NO_FOLDER }
 /** 진행 표시를 강제로 내리는 시간. 모델 판정이 파일당 수십 초 걸릴 수 있어 넉넉히 잡는다. */
 private const val SCAN_TIMEOUT_MILLIS = 3 * 60 * 1000L
 
+/**
+ * `AndroidViewModel`을 쓰는 이유는 Context 가 필요해서다 —
+ * `RecordingFolder`(SharedPreferences) 와 `WorkManager` 가 요구한다.
+ *
+ * 평범한 `ViewModel`에 Context 를 필드로 들고 있으면 Activity 를 넘겨받는 순간 그대로
+ * 누수가 된다. ViewModel 은 화면 회전을 넘어 살아남기 때문이다.
+ */
 class HomeViewModel(
     private val database: AppDatabase,
     private val demoInjector: DemoInjector,
-    private val context: Context,
-) : ViewModel() {
+    application: Application,
+) : AndroidViewModel(application) {
+
+    private val context: Context get() = getApplication<Application>()
 
     val uiState: StateFlow<HomeUiState> = database.eventDao().observeRecent()
         .map { events -> HomeUiState(events = events) }
@@ -128,6 +138,10 @@ class HomeViewModel(
             _callDemoResult.value = CallDemoResult.NO_FOLDER
             return@launchDemo
         }
+        // 폴더를 연결한 뒤 다시 누르면 이전 오류 배너를 내린다. 이 한 줄이 없으면 한 번 뜬
+        // "폴더 미연결"이 연결을 마친 뒤에도 화면에 그대로 남는다 — 배너를 닫는 다른
+        // 경로가 없기 때문이다.
+        _callDemoResult.value = null
 
         val request = RecordingScanWorker.enqueueNow(context, force = true)
         _callDemoStep.value = CallDemoStep.ANALYZING
@@ -159,8 +173,6 @@ class HomeViewModel(
         _callDemoStep.value = CallDemoStep.IDLE
     }
 
-    fun clearCallDemoResult() { _callDemoResult.value = null }
-
     /** 15분 주기를 기다리지 않고 녹음 폴더를 즉시 스캔한다 (수동 확인용). */
     fun scanNow() {
         RecordingScanWorker.enqueueNow(context)
@@ -178,10 +190,10 @@ class HomeViewModel(
     class Factory(
         private val database: AppDatabase,
         private val demoInjector: DemoInjector,
-        private val context: Context,
+        private val application: Application,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(database, demoInjector, context) as T
+            HomeViewModel(database, demoInjector, application) as T
     }
 }

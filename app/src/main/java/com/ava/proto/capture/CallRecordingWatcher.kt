@@ -42,11 +42,6 @@ class CallRecordingWatcher(private val context: Context) {
         }
     }
 
-    fun stop() {
-        observer?.stopWatching()
-        observer = null
-    }
-
     @Suppress("DEPRECATION")
     private fun buildObserver(dir: File): FileObserver {
         val mask = FileObserver.CLOSE_WRITE or FileObserver.MOVED_TO

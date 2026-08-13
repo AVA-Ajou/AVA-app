@@ -3,7 +3,6 @@ package com.ava.proto.notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.ava.proto.data.SessionEntity
@@ -17,16 +16,15 @@ import com.ava.proto.data.SessionEntity
  */
 class AlertNotifier(private val context: Context) {
 
+    // minSdk 26 이 곧 채널 도입 버전(O)이라 버전 분기가 필요 없다.
     init {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                AlertNotifier.CHANNEL_ID,
-                "보이스피싱 의심 경보",
-                NotificationManager.IMPORTANCE_HIGH,
-            )
-            context.getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            AlertNotifier.CHANNEL_ID,
+            "보이스피싱 의심 경보",
+            NotificationManager.IMPORTANCE_HIGH,
+        )
+        context.getSystemService(NotificationManager::class.java)
+            .createNotificationChannel(channel)
     }
 
     fun notifySuspected(session: SessionEntity, channels: Set<String>) {

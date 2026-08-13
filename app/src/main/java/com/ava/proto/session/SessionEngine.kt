@@ -22,8 +22,6 @@ private const val WINDOW_MILLIS = 10 * 60 * 1000L // 10분
  * 강도 조절 장치다. 통화 하나만으로 끝나는 보이스피싱도(STT가 붙으면) 이 로직에서
  * 놓치지 않는다.
  *
- * ALERT는 자리만 잡아둔 값이라 현재 코드 경로로는 SUSPECTED/ESCALATED까지만 도달한다.
- *
  * 시간 창은 이벤트가 실제로 일어난 시각([EventEntity.capturedAt])을 기준으로 계산한다 —
  * 처리 시각(now())을 쓰면 최대 15분 지연되는 통화 채널이 실제로는 가까운 시각에 있었던
  * 다른 채널과 엮이지 못하거나, 반대로 무관한 최근 이벤트와 잘못 엮일 수 있다.
@@ -81,11 +79,9 @@ class SessionEngine(
         val channels = session.channelsInvolved.toMutableSet()
         val isNewChannel = channels.add(event.channel)
 
-        val newState = when {
-            session.state == SessionState.ALERT -> SessionState.ALERT
-            isNewChannel && channels.size >= 2 -> SessionState.ESCALATED
-            else -> session.state
-        }
+        // 하향 전이는 없다 — 한 번 격상된 세션은 이후 이벤트로 SUSPECTED로 되돌아가지 않는다.
+        val newState =
+            if (isNewChannel && channels.size >= 2) SessionState.ESCALATED else session.state
 
         val updatedSession = session.copy(
             state = newState,

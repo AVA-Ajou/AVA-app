@@ -12,6 +12,13 @@ private const val TAG = "BackendClassification"
 private const val TIMEOUT_MS = 60_000
 
 /**
+ * 서버가 어느 어댑터를 켤지 고르는 값(`adapters/voice`). 생성자 인자로 열어뒀었는데 다른
+ * 값을 넘기는 곳이 없었다 — 서버가 어댑터를 하나만 올리기 때문이다. 베이스가 다른 어댑터를
+ * 섞으면 확률이 조용히 틀어져서 그렇다(`../Detection-Server/README.md`).
+ */
+private const val TASK = "voice"
+
+/**
  * 파인튜닝한 Gemma를 올린 서버(`Detection-Server`)에 판정을 맡기는 [ClassificationClient].
  *
  * 서버가 **두 가지를 따로** 준다.
@@ -25,10 +32,7 @@ private const val TIMEOUT_MS = 60_000
  * 서버가 없으면 예외를 던진다. 계약대로 호출부가 CLASSIFICATION_FAILED로 기록한다 —
  * 실패를 [RiskSignal.NONE]으로 뭉개면 "무해함"과 구분이 사라진다.
  */
-class BackendClassificationClient(
-    private val baseUrl: String,
-    private val task: String = "voice",
-) : ClassificationClient {
+class BackendClassificationClient(private val baseUrl: String) : ClassificationClient {
 
     /**
      * **호출은 한 번뿐이다.**
@@ -39,7 +43,7 @@ class BackendClassificationClient(
      * 근거 문장은 화면에 쓰지 않아 아예 요청하지 않는다(`reason` 을 켜지 않는다).
      */
     override suspend fun classify(text: String): ClassificationVerdict = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("text", text).put("task", task)
+        val body = JSONObject().put("text", text).put("task", TASK)
         val response = post(body)
 
         val risk = response.getDouble("risk")
