@@ -145,7 +145,7 @@ adb logcat -s DetectionPipeline BackendClassification ServerTranscriber \
            RecordingScanWorker CallRecordingWatcher NotificationCapture DemoInjector
 ```
 
-위험도가 70을 넘었는데 단계 신호가 하나도 안 잡히면 `주의 필요`(주황)로 표시됩니다.
+위험도가 66을 넘었는데 단계 신호가 하나도 안 잡히면 `경보 · 주의`(주황)로 표시됩니다.
 **모델만 위험하다고 본 상태**라는 뜻입니다 — 없는 근거로 단계를 붙이지 않습니다.
 다만 진짜 피싱의 19%도 여기 해당하므로 걸러내지는 않습니다.
 

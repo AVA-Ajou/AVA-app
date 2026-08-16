@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.HorizontalDivider
@@ -239,14 +240,25 @@ private fun RecentActivityCard(events: List<EventEntity>) {
 
 @Composable
 private fun ActivityRow(event: EventEntity) {
+    // 주의보를 경보와 같은 빨강으로 묶지 않는다. 이 구간은 모델이 애매하다고 본 자리라
+    // 실제로 정상이 섞여 들어온다 — 색까지 같으면 사용자가 둘을 구분할 방법이 없다.
     val risky = event.riskSignal == RiskSignal.HIGH
+    val cautious = event.riskSignal == RiskSignal.CAUTION
     Row(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
-        IconBubble(channelIcon(event.channel), channelColor(event.channel), size = 40)
+        IconBubble(
+            if (risky || cautious) Icons.Filled.Warning else Icons.Filled.CheckCircle,
+            when {
+                risky -> MaterialTheme.colorScheme.error
+                cautious -> caution
+                else -> MaterialTheme.colorScheme.tertiaryContainer
+            },
+            size = 32,
+        )
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -265,7 +277,17 @@ private fun ActivityRow(event: EventEntity) {
                 )
             }
             Text(
-                event.text ?: "(음성 변환 대기 중)",
+                when {
+                    risky -> "피싱 의심 신호 탐지"
+                    cautious -> "피싱 주의보"
+                    else -> "정상 메시지 확인"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                event.text ?: "(STT 대기 중)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,

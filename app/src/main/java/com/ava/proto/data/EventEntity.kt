@@ -5,12 +5,22 @@ import androidx.room.PrimaryKey
 import com.ava.proto.capture.Channel
 
 /**
- * 판정을 세 단계로 접은 값. 기본 경로는 모델 서버가 준 [EventEntity.risk]를 접은 것이고,
- * 서버 주소가 없을 때만 키워드 대역이 만든다(그쪽은 `HIGH`/`NONE` 둘뿐이다).
+ * 판정을 세 등급으로 접은 값. 기본 경로는 모델 서버가 준 [EventEntity.risk]와
+ * [EventEntity.stage]를 함께 보고 정하고, 서버 주소가 없을 때만 키워드 대역이 만든다
+ * (그쪽은 `HIGH`/`NONE` 둘뿐이다).
  */
 enum class RiskSignal {
     NONE,
-    LOW,
+
+    /**
+     * 주의보 — 모델은 애매하다고 했지만(33~66) 규칙이 진행 단계를 찾아낸 상태.
+     *
+     * 예전 이름은 `LOW`였고 위험도 40~70 구간에 붙었는데, **읽는 코드가 한 곳도 없어
+     * 사실상 죽은 값이었다.** 두 판정기가 겹칠 때만 켜지는 등급으로 되살렸다.
+     */
+    CAUTION,
+
+    /** 경보 — 모델이 혼자서도 확신하는 구간(66 이상). */
     HIGH,
 }
 
