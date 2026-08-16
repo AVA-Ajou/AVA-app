@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  안드로이드 12부터는 앱이 첫 프레임을 그릴 때까지 **시스템이 자기 스플래시를 먼저 띄운다.**
+  이걸 끌 수는 없다. 기본값이면 런처 아이콘 배경(흰색) 위에 아이콘이 뜨는데, 그다음 우리
+  인트로가 라벤더라 화면이 흰색 → 라벤더로 한 번 튄다. 실제로 그렇게 보였다.
+
+  그래서 시스템 스플래시의 배경과 아이콘을 인트로와 **같은 것**으로 맞춘다. 두 화면이
+  이어져 보이면 사용자에게는 스플래시가 하나로 읽힌다.
+
+  아이콘으로 어댑티브 아이콘 대신 전경(마스코트)만 넘기는 이유는, 어댑티브 아이콘을 쓰면
+  흰 원이 함께 그려져 라벤더 배경 위에 원이 남기 때문이다.
+-->
+<resources>
+    <style name="Theme.Proto" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F7F4FD</item>
+        <item name="android:windowSplashScreenBackground">#F7F4FD</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+    </style>
+</resources>
