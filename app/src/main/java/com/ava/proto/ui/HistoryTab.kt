@@ -31,6 +31,7 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 @Composable
 fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
     val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH }
+    val cautionCount = events.count { it.riskSignal == RiskSignal.CAUTION }
 
     Column(
         modifier = modifier,
@@ -45,10 +46,19 @@ fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
                 container = MaterialTheme.colorScheme.surfaceContainerHigh,
             )
             StatusBadge(
-                "위험 $riskyCount",
+                "경보 $riskyCount",
                 content = MaterialTheme.colorScheme.error,
                 container = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
             )
+            // 경보와 합쳐 세지 않는다. 두 등급은 근거가 다르고(모델 단독 / 두 판정기의 교집합)
+            // 합치면 어느 쪽이 늘었는지 안 보인다 — 학습셋을 보강했을 때 볼 값이 이것이다.
+            if (cautionCount > 0) {
+                StatusBadge(
+                    "주의보 $cautionCount",
+                    content = caution,
+                    container = caution.copy(alpha = 0.15f),
+                )
+            }
         }
 
         if (events.isEmpty()) {
@@ -120,15 +130,23 @@ internal fun EventCard(event: EventEntity) {
             // 그래서 카드에 남는 판정 표시는 단계 배지 하나뿐이고, 예전 경고 줄이 쓰던
             // 생김새(느낌표 + 빨간 글씨 + 테두리)를 그 배지로 옮겼다.
             //
-            // **색이 두 가지인 이유** — 규칙이 신호를 하나도 못 찾으면 단계가 null이다.
-            // 없는 근거로 1단계를 찍지 않고, 대신 `주의 필요`를 주황으로 띄운다.
-            // 모델만 위험하다고 본 상태이기 때문이다 — 건강보험공단 환급금 안내(정상)가
-            // 위험도 99.0을 받았는데 규칙은 정보 요구도 이체 지시도 못 찾았고, 실제로
-            // 그 통화에는 없었다. 반대로 진짜 피싱의 19%도 여기 걸리므로(검증셋 실측)
+            // **주황이 두 자리에서 나온다.** 둘 다 "한쪽 판정기만 위험하다고 본 상태"다.
+            //
+            //   경보(빨강)   위험도 66 이상 + 단계 있음 — 둘 다 위험하다고 봤다
+            //   경보(주황)   위험도 66 이상 + 단계 없음 — 모델만 봤다. `경보 · 주의`
+            //   주의보(주황) 위험도 33~66 + 단계 있음   — 규칙만 봤다. `주의보 · N단계`
+            //
+            // 모델만 본 쪽을 빨강으로 올리지 않는 이유는 건강보험공단 환급금 안내(정상)가
+            // 위험도 99.0을 받은 일이 있어서다. 규칙은 그 통화에서 정보 요구도 이체 지시도
+            // 못 찾았고, 실제로 없었다. 반대로 진짜 피싱의 19%도 여기 걸리므로(검증셋 실측)
             // **걸러내지는 않는다** — 미탐은 돈이 나가고 오탐은 짜증에 그친다.
-            if (event.riskSignal == RiskSignal.HIGH) {
+            //
+            // 주의보 쪽을 문구로 구분하는 이유는 원인이 정반대라서다. 화면에서는 같은 주황을
+            // 쓰지만, 로그를 되짚을 때 어느 판정기가 켰는지 모르면 오판을 못 쫓아간다.
+            if (event.riskSignal != RiskSignal.NONE) {
                 val stage = event.stage
-                val tint = if (stage != null) MaterialTheme.colorScheme.error else caution
+                val alert = event.riskSignal == RiskSignal.HIGH
+                val tint = if (alert && stage != null) MaterialTheme.colorScheme.error else caution
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -143,8 +161,18 @@ internal fun EventCard(event: EventEntity) {
                         modifier = Modifier.size(16.dp),
                     )
                     Text(
-                        if (stage != null) "${stage}단계 ${event.stageLabel.orEmpty()}".trim()
-                        else "주의 필요",
+                        when {
+                            // 등급 없이 단계만 띄우면 빨강·주황이 색으로만 갈려, 색을 못 가리는
+                            // 눈에는 둘이 같은 배지가 된다. 등급 이름을 앞에 붙여 글로도 읽히게 한다.
+                            //
+                            // 단계 없는 경보를 `경보 · 주의`로 낮춰 부르는 이유 — 모델만 위험하다고
+                            // 본 상태라 규칙이 뒷받침하지 않는다. 정상 통화가 위험도 99.0을 받은
+                            // 일이 실제로 있었다. 등급은 경보로 두되(진짜 피싱의 19%가 여기 있다)
+                            // 말로는 단정하지 않는다.
+                            stage == null -> "경보 · 주의"
+                            alert -> "경보 · ${stage}단계 ${event.stageLabel.orEmpty()}".trim()
+                            else -> "주의보 · ${stage}단계 ${event.stageLabel.orEmpty()}".trim()
+                        },
                         style = MaterialTheme.typography.labelLarge,
                         color = tint,
                     )

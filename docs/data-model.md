@@ -17,7 +17,7 @@ DB 이름 `proto.db`, 현재 version **3**, `exportSchema = true` → `app/schem
 | `sourceLabel` | String | 알림 발신 패키지명 또는 녹음 파일명 |
 | `text` | String? | null = 아직 분석할 텍스트 없음 (STT 대기) |
 | `status` | `EventStatus` | 아래 참조 |
-| `riskSignal` | `RiskSignal` | `NONE` / `LOW` / `HIGH` |
+| `riskSignal` | `RiskSignal` | `NONE` / `CAUTION` / `HIGH` |
 | `matchedPhrase` | String? | 키워드 대역은 매칭 문구, 서버 경로는 `stage_evidence[0]`(규칙이 그 단계를 매긴 원문 인용구). 화면에는 안 나오고 오판을 되짚을 때만 쓴다 |
 | `sessionId` | Long? | 세션에 합류하지 않은 이벤트는 null |
 | `audioUri` | String? | 통화 채널의 **실제 녹음**만. `.txt` 전사본은 재생할 오디오가 없어 null |
@@ -40,10 +40,15 @@ DB 이름 `proto.db`, 현재 version **3**, `exportSchema = true` → `app/schem
 `NONE`은 "분류해봤더니 무해함"이라는 뜻이지 "분류를 못 함"이 아니다.
 이 구분이 사라지면 과거 게이트 설계의 모호함("NONE = 분석 안 됨")이 조용히 되돌아온다.
 
-### `RiskSignal.LOW`
+### `RiskSignal.CAUTION`
 
-서버 경로는 40~70 구간을 `LOW`로 내려보내지만 **화면에서는 `NONE`과 구분되지 않는다.**
-피싱 여부는 70을 기준으로만 가르기 때문이다. 키워드 폴백은 `HIGH`/`NONE`뿐이다.
+**위험도만으로는 켜지지 않는 유일한 등급이다.** 위험도가 33~66이면서 `stage`가 채워져
+있을 때만 붙는다 — 모델은 애매하다고 했는데 서버 규칙이 요구 문형을 찾아낸 상태다.
+키워드 폴백은 `HIGH`/`NONE`뿐이라 이 값을 만들지 않는다(규칙 판정기가 없으므로).
+
+예전 이름은 `LOW`였고 위험도 40~70에 붙었는데, **읽는 코드가 한 곳도 없어 죽은 값이었다.**
+DB 버전 4에서 이름과 의미를 함께 바꿨다 — 스키마는 그대로지만 저장 문자열이 달라져
+옛 행을 읽으면 `valueOf`가 터지므로, 파괴적 마이그레이션으로 비운다.
 
 `risk`(0~100 원본)는 계속 저장되지만 **화면에는 나오지 않는다.** 값이 사실상 0 아니면
 100으로 갈려 정보가 없고, 사용자가 할 행동은 진행 단계가 정한다. 다만 경계선 오탐

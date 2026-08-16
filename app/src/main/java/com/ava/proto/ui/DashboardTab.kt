@@ -251,19 +251,30 @@ private fun RecentActivityCard(events: List<EventEntity>, onViewAllEvents: () ->
 
 @Composable
 private fun ActivityRow(event: EventEntity) {
+    // 주의보를 경보와 같은 빨강으로 묶지 않는다. 이 구간은 모델이 애매하다고 본 자리라
+    // 실제로 정상이 섞여 들어온다 — 색까지 같으면 사용자가 둘을 구분할 방법이 없다.
     val risky = event.riskSignal == RiskSignal.HIGH
+    val cautious = event.riskSignal == RiskSignal.CAUTION
     Row(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
         IconBubble(
-            if (risky) Icons.Filled.Warning else Icons.Filled.CheckCircle,
-            if (risky) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiaryContainer,
+            if (risky || cautious) Icons.Filled.Warning else Icons.Filled.CheckCircle,
+            when {
+                risky -> MaterialTheme.colorScheme.error
+                cautious -> caution
+                else -> MaterialTheme.colorScheme.tertiaryContainer
+            },
             size = 32,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                if (risky) "피싱 의심 신호 탐지" else "정상 메시지 확인",
+                when {
+                    risky -> "피싱 의심 신호 탐지"
+                    cautious -> "피싱 주의보"
+                    else -> "정상 메시지 확인"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,

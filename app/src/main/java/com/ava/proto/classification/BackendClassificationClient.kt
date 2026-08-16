@@ -12,6 +12,25 @@ private const val TAG = "BackendClassification"
 private const val TIMEOUT_MS = 60_000
 
 /**
+ * 경보(빨강) 문턱. 이 위는 모델 혼자서도 확신하는 구간이다.
+ *
+ * 검증셋 213건에서 정상 통화의 최고 점수가 38.3이고 피싱 106건 중 102건이 84 이상이라,
+ * 40~84 사이는 사실상 비어 있다. 그 빈 구간 어디에 그어도 검증셋 결과는 같으므로
+ * 아래 [CAUTION_THRESHOLD]와 짝이 맞는 값으로 잡았다.
+ */
+private const val ALERT_THRESHOLD = 66.0
+
+/**
+ * 주의보(주황) 문턱. **이 구간은 위험도만으로 판정하지 않는다** — 서버 규칙이 진행 단계를
+ * 하나라도 찾아냈을 때만 주의보가 되고, 못 찾으면 정상으로 둔다.
+ *
+ * 두 판정기의 교집합을 쓰는 것이 요점이다. 규칙만 쓰면 헐거워서 정상 통화 10건 중 8건에서
+ * 신호가 켜지고, 모델만 쓰면 이 구간에서 정상·피싱이 섞인다. 모델이 33점 이상 준 것에만
+ * 규칙을 적용하면 검증셋 정상 107건에서 주의보가 한 건도 나오지 않았다(실측).
+ */
+private const val CAUTION_THRESHOLD = 33.0
+
+/**
  * 서버가 어느 어댑터를 켤지 고르는 값(`adapters/voice`). 생성자 인자로 열어뒀었는데 다른
  * 값을 넘기는 곳이 없었다 — 서버가 어댑터를 하나만 올리기 때문이다. 베이스가 다른 어댑터를
  * 섞으면 확률이 조용히 틀어져서 그렇다(`../Detection-Server/README.md`).
@@ -52,7 +71,7 @@ class BackendClassificationClient(private val baseUrl: String) : ClassificationC
         Log.d(TAG, "위험도 $risk" + if (stage != null) " · 단계 $stage $stageLabel" else "")
 
         ClassificationVerdict(
-            riskSignal = signalOf(risk),
+            riskSignal = signalOf(risk, stage),
             // 화면에는 안 나가지만 기록에는 남긴다 — 규칙이 어느 문구를 보고 그 단계를
             // 매겼는지가 오판을 되짚는 유일한 실마리다.
             matchedPhrase = firstEvidence(response),
@@ -70,16 +89,30 @@ class BackendClassificationClient(private val baseUrl: String) : ClassificationC
             ?.takeIf { it.isNotBlank() }
 
     /**
-     * 0~100 위험도를 세 단계로 접는다.
+     * 위험도와 단계를 함께 보고 등급을 정한다.
      *
-     * 검증셋 213건에서는 값이 0 아니면 100으로 갈려 [RiskSignal.LOW]가 거의 나오지 않는다.
-     * 다만 그건 검증셋에 애매한 통화가 없어서다 — 은행이 먼저 걸어온 정상 통화를 넣으면
-     * 41 / 51 / 59 같은 값이 실제로 나온다. LOW 구간은 그때를 위해 잡아둔 것이다.
-     * 화면에서는 70 이상만 피싱으로 표시하므로 LOW 와 NONE 은 지금 구분되지 않는다.
+     * ```
+     *   66 이상                   → HIGH     경보(빨강)
+     *   33 이상 + 단계가 잡힘      → CAUTION  주의보(주황)
+     *   33 이상 + 단계가 없음      → NONE     표시하지 않는다
+     *   33 미만                   → NONE
+     * ```
+     *
+     * **단계를 같이 보는 것이 이 함수의 요점이다.** 33~66 구간은 모델이 애매해하는 자리라
+     * 위험도만으로는 정상과 피싱이 섞인다. 실측에서 이 구간에 정상 6건(퇴직연금 상담 51.0,
+     * 부동산 잔금일정 47.0 등)과 피싱 3건(가족사칭 48.0 등)이 함께 들어왔다. 서버 규칙이
+     * 요구 문형을 찾았는지를 두 번째 근거로 쓰면 그중 상당수가 갈린다.
+     *
+     * 위험도가 [ALERT_THRESHOLD] 이상이면 단계 없이도 HIGH다. 규칙이 신호를 못 찾는 피싱이
+     * 검증셋 기준 19%나 되므로, 단계를 경보의 조건으로 걸면 그만큼이 통째로 빠진다.
+     *
+     * **[CAUTION_THRESHOLD]는 서버 `ASSESS_THRESHOLD` 와 같은 값이어야 한다** — 서버가 그
+     * 아래로는 단계를 계산하지 않으므로, 앱이 더 낮은 값을 쓰면 단계가 영영 null인 구간이
+     * 생겨 주의보가 나올 수 없다.
      */
-    private fun signalOf(risk: Double): RiskSignal = when {
-        risk >= 70 -> RiskSignal.HIGH
-        risk >= 40 -> RiskSignal.LOW
+    private fun signalOf(risk: Double, stage: Int?): RiskSignal = when {
+        risk >= ALERT_THRESHOLD -> RiskSignal.HIGH
+        risk >= CAUTION_THRESHOLD && stage != null -> RiskSignal.CAUTION
         else -> RiskSignal.NONE
     }
 
