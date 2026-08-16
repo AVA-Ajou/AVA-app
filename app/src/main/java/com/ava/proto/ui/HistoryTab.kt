@@ -30,7 +30,10 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
 @Composable
 fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
-    val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH }
+    // 아래 카드가 붙이는 배지와 같은 세 갈래로 센다. `HIGH`를 한 덩어리로 세면 규칙이
+    // 뒷받침한 경보와 모델만 본 `경보우려`가 한 숫자에 뭉쳐, 요약과 카드가 서로 다른 말을 한다.
+    val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH && it.stage != null }
+    val unbackedCount = events.count { it.riskSignal == RiskSignal.HIGH && it.stage == null }
     val cautionCount = events.count { it.riskSignal == RiskSignal.CAUTION }
 
     Column(
@@ -50,8 +53,19 @@ fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
                 content = MaterialTheme.colorScheme.error,
                 container = MaterialTheme.colorScheme.errorContainer,
             )
-            // 경보와 합쳐 세지 않는다. 두 등급은 근거가 다르고(모델 단독 / 두 판정기의 교집합)
-            // 합치면 어느 쪽이 늘었는지 안 보인다 — 학습셋을 보강했을 때 볼 값이 이것이다.
+            // 경보우려와 주의보는 0이면 칩을 접는다. 세 등급을 늘 띄우면 대부분의 화면이
+            // `0`을 두 개 달고 있게 되고, 실제로 뭔가 잡힌 날의 숫자가 그만큼 덜 보인다.
+            // 경보는 0이어도 남긴다 — 이 화면이 무엇을 세는 화면인지 알리는 기준점이다.
+            if (unbackedCount > 0) {
+                StatusBadge(
+                    "경보우려 $unbackedCount",
+                    content = caution,
+                    container = caution.copy(alpha = 0.15f),
+                )
+            }
+            // 주의보를 경보 쪽에 합쳐 세지 않는다. 두 등급은 근거가 다르고(모델 단독 /
+            // 두 판정기의 교집합) 합치면 어느 쪽이 늘었는지 안 보인다 — 학습셋을 보강했을 때
+            // 볼 값이 이것이다.
             if (cautionCount > 0) {
                 StatusBadge(
                     "주의보 $cautionCount",
@@ -132,7 +146,7 @@ internal fun EventCard(event: EventEntity) {
             // **주황이 두 자리에서 나온다.** 둘 다 "한쪽 판정기만 위험하다고 본 상태"다.
             //
             //   경보(빨강)   위험도 66 이상 + 단계 있음 — 둘 다 위험하다고 봤다
-            //   경보(주황)   위험도 66 이상 + 단계 없음 — 모델만 봤다. `경보 · 주의`
+            //   경보(주황)   위험도 66 이상 + 단계 없음 — 모델만 봤다. `경보우려`
             //   주의보(주황) 위험도 33~66 + 단계 있음   — 규칙만 봤다. `주의보 · N단계`
             //
             // 모델만 본 쪽을 빨강으로 올리지 않는 이유는 건강보험공단 환급금 안내(정상)가
@@ -164,11 +178,11 @@ internal fun EventCard(event: EventEntity) {
                             // 등급 없이 단계만 띄우면 빨강·주황이 색으로만 갈려, 색을 못 가리는
                             // 눈에는 둘이 같은 배지가 된다. 등급 이름을 앞에 붙여 글로도 읽히게 한다.
                             //
-                            // 단계 없는 경보를 `경보 · 주의`로 낮춰 부르는 이유 — 모델만 위험하다고
+                            // 단계 없는 경보를 `경보우려`로 낮춰 부르는 이유 — 모델만 위험하다고
                             // 본 상태라 규칙이 뒷받침하지 않는다. 정상 통화가 위험도 99.0을 받은
                             // 일이 실제로 있었다. 등급은 경보로 두되(진짜 피싱의 19%가 여기 있다)
                             // 말로는 단정하지 않는다.
-                            stage == null -> "경보 · 주의"
+                            stage == null -> "경보우려"
                             alert -> "경보 · ${stage}단계 ${event.stageLabel.orEmpty()}".trim()
                             else -> "주의보 · ${stage}단계 ${event.stageLabel.orEmpty()}".trim()
                         },
