@@ -71,7 +71,7 @@ fun SimulationTab(
                     SimulationRow(
                         icon = channelIcon(Channel.CALL),
                         tint = channelColor(Channel.CALL),
-                        title = "통화 전사본",
+                        title = "통화 내용",
                         description = "녹음 폴더에 넣어둔 통화 텍스트(.txt)를 지금 분석합니다.",
                         enabled = idle,
                         onRun = onDemoCall,

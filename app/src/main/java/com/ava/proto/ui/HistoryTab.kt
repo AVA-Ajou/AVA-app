@@ -100,7 +100,7 @@ internal fun EventCard(event: EventEntity) {
             // 보이고, 판을 깔면 "받은 내용"과 "우리 판정"이 시각적으로 갈린다.
             SoftBlock {
                 Text(
-                    event.text ?: "(전사 대기 중)",
+                    event.text ?: "(음성 변환 대기 중)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(14.dp),

@@ -265,7 +265,7 @@ private fun ActivityRow(event: EventEntity) {
                 )
             }
             Text(
-                event.text ?: "(전사 대기 중)",
+                event.text ?: "(음성 변환 대기 중)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,

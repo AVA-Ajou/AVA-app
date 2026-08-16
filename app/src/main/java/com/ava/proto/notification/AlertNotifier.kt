@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.ava.proto.R
 import com.ava.proto.data.SessionEntity
 
 /**
@@ -50,7 +51,7 @@ class AlertNotifier(private val context: Context) {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
         val notification = NotificationCompat.Builder(context, AlertNotifier.CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
