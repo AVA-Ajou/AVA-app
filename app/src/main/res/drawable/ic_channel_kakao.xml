@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  카카오톡 채널용 말풍선.
+
+  종이비행기(`Icons.AutoMirrored.Filled.Send`)를 쓰고 있었는데, 그건 "보내기"이지
+  "카카오톡"이 아니라서 아무 메신저로나 읽혔다. 카카오톡을 알아보게 하는 것은
+  **왼쪽 아래로 흐르는 꼬리가 달린 둥근 말풍선** 실루엣이고, 여기에 채널색인 노랑이 얹히면
+  설명 없이 읽힌다. 브랜드 시트의 다이어그램도 카카오톡 자리에 노란 말풍선을 그렸다.
+
+  카카오의 공식 로고 파일을 가져다 넣지 않고 실루엣을 직접 그린 것은, 발표 자료로 나가는
+  화면에 타사 상표 원본을 박아두지 않기 위해서다.
+
+  `fillColor` 는 검정이지만 화면에서는 `Icon` 이 `tint` 로 덮어쓴다 — 채널색 한 곳에서
+  색이 나오게 하려는 것이다.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,3 C6.48,3 2,6.58 2,11 C2,13.86 3.87,16.37 6.68,17.79 L5.5,21.55 C5.33,22.11 5.94,22.55 6.44,22.24 L11.36,19.11 C11.57,19.11 11.78,19.12 12,19.12 C17.52,19.12 22,15.53 22,11 C22,6.58 17.52,3 12,3 Z" />
+</vector>

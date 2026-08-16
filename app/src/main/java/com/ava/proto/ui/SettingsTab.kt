@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ava.proto.capture.Channel
 
 /**
  * 채널을 켜고 끄는 토글은 두지 않는다 — 이 앱에서 채널의 on/off 는 앱 설정이 아니라
@@ -44,7 +43,7 @@ fun SettingsTab(
     ) {
         ScreenTitle("설정", "채널을 연결해야 감시가 시작됩니다.")
 
-        SectionLabel("채널 연결", color = MaterialTheme.colorScheme.primary)
+        SectionHeader("채널 연결")
 
         CleanCard {
             Column(
@@ -52,7 +51,7 @@ fun SettingsTab(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    IconBubble(Icons.Filled.Call, MaterialTheme.colorScheme.primaryContainer)
+                    IconBubble(channelIcon(Channel.CALL), channelColor(Channel.CALL))
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -70,9 +69,9 @@ fun SettingsTab(
                             )
                             if (recordingFolderUri != null) {
                                 StatusBadge(
-                                    "Active",
-                                    content = MaterialTheme.colorScheme.tertiaryContainer,
-                                    container = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.16f),
+                                    "연결됨",
+                                    content = MaterialTheme.colorScheme.tertiary,
+                                    container = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.16f),
                                 )
                             } else {
                                 StatusBadge(
@@ -126,14 +125,14 @@ fun SettingsTab(
                     modifier = Modifier
                         .width(4.dp)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                        .background(channelColor(Channel.SMS)),
                 )
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        IconBubble(Icons.Filled.Email, MaterialTheme.colorScheme.secondaryContainer)
+                        IconBubble(channelIcon(Channel.SMS), channelColor(Channel.SMS))
                         Column(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -160,7 +159,7 @@ fun SettingsTab(
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Medium,
                                     color = if (notificationAccessGranted) {
-                                        MaterialTheme.colorScheme.secondaryContainer
+                                        MaterialTheme.colorScheme.tertiary
                                     } else {
                                         MaterialTheme.colorScheme.error
                                     },

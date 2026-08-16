@@ -1,14 +1,12 @@
 package com.ava.proto.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,7 +19,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -29,22 +26,27 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 /**
  * 탭이 넷으로 갈라져도 같은 앱처럼 보이려면 모서리·카드·버튼 규격이 한 곳에서 나와야 한다.
  * 탭마다 각자 Card를 조립하면 반드시 값이 어긋난다.
+ *
+ * 모서리를 크게(22dp) 잡은 것은 발표 자료의 폰 목업을 전제로 한 선택이다 — 목업은 슬라이드에서
+ * 화면을 30~40%로 줄여 쓰는데, 12dp 는 그 크기에서 거의 직각으로 보여 카드가 서로 붙어 보인다.
  */
-internal val CardShape = RoundedCornerShape(12.dp)
+internal val CardShape = RoundedCornerShape(22.dp)
 internal val PillShape = RoundedCornerShape(percent = 50)
 
+/**
+ * 기본 카드. 라벤더 배경 위의 흰 판이다.
+ *
+ * 테두리를 빼고 아주 옅은 그림자만 남겼다 — 브랜드 시트의 카드가 선 없이 떠 있는 모양이고,
+ * 배경이 흰색이 아니라 라벤더라 테두리 없이도 카드 경계가 읽힌다.
+ */
 @Composable
 internal fun CleanCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(
@@ -52,21 +54,78 @@ internal fun CleanCard(modifier: Modifier = Modifier, content: @Composable () ->
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier.fillMaxWidth(),
     ) {
         content()
     }
 }
 
+/** 카드 안에서 한 번 더 묶을 때 쓰는 연보라 판. 흰 위에 흰을 얹으면 경계가 사라진다. */
+@Composable
+internal fun SoftBlock(
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.surfaceContainer,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(tint, RoundedCornerShape(16.dp)),
+    ) {
+        content()
+    }
+}
+
+/**
+ * 섹션 머리. 브랜드 시트가 `핵심 아이디어`·`주요 기능`을 **보라로 채운 알약**에 흰 글씨로
+ * 얹어 쓰는데, 그게 시트에서 가장 눈에 띄는 반복 요소라 그대로 가져왔다.
+ */
+@Composable
+internal fun SectionPill(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.primaryContainer, PillShape)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+    )
+}
+
+/** 섹션 머리 한 줄 — 알약 + (선택) 오른쪽 링크. */
+@Composable
+internal fun SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SectionPill(title)
+        if (actionLabel != null && onAction != null) {
+            TextButton(onClick = onAction, shape = PillShape) {
+                Text(
+                    actionLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 internal fun ScreenTitle(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
         Text(
@@ -77,33 +136,20 @@ internal fun ScreenTitle(title: String, subtitle: String) {
     }
 }
 
+/** 옅은 원 안의 아이콘. 시트가 기능 아이콘을 전부 이 모양으로 쓴다. */
 @Composable
-internal fun SectionLabel(
-    text: String,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.2.sp,
-        color = color,
-    )
-}
-
-@Composable
-internal fun IconBubble(icon: ImageVector, tint: Color, size: Int = 40) {
+internal fun IconBubble(icon: ImageVector, tint: Color, size: Int = 46) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(size.dp)
-            .background(tint.copy(alpha = 0.12f), CircleShape),
+            .background(tint.copy(alpha = 0.14f), CircleShape),
     ) {
         Icon(
             icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size((size / 2).dp),
+            modifier = Modifier.size((size * 0.48f).dp),
         )
     }
 }
@@ -113,11 +159,11 @@ internal fun StatusBadge(text: String, content: Color, container: Color) {
     Text(
         text,
         style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.Bold,
         color = content,
         modifier = Modifier
-            .background(container, RoundedCornerShape(4.dp))
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .background(container, PillShape)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
     )
 }
 
@@ -126,10 +172,10 @@ internal fun StatusBadge(text: String, content: Color, container: Color) {
 internal fun StatusDot(active: Boolean) {
     Box(
         modifier = Modifier
-            .size(8.dp)
+            .size(9.dp)
             .background(
                 if (active) {
-                    MaterialTheme.colorScheme.tertiaryContainer
+                    MaterialTheme.colorScheme.tertiary
                 } else {
                     MaterialTheme.colorScheme.outlineVariant
                 },
@@ -154,7 +200,8 @@ internal fun PrimaryPillButton(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimary,
         ),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
         modifier = modifier,
     ) {
         if (icon != null) {
@@ -176,11 +223,11 @@ internal fun OutlinedPillButton(
         onClick = onClick,
         enabled = enabled,
         shape = PillShape,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.secondaryContainer),
         colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.onSurface,
+            contentColor = MaterialTheme.colorScheme.primary,
         ),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 11.dp),
         modifier = modifier,
     ) {
         Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
@@ -195,17 +242,25 @@ internal fun ProgressPanel(
     onCancel: (() -> Unit)? = null,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surfaceContainer, CardShape)
-            .padding(12.dp),
+            .padding(16.dp),
     ) {
-        LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .size(6.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest, PillShape),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.4f)
+                    .size(6.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, PillShape),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -233,62 +288,23 @@ internal fun ProgressPanel(
 @Composable
 internal fun ErrorBanner(text: String) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.errorContainer, CardShape)
-            .padding(12.dp),
+            .padding(16.dp),
     ) {
         Icon(
             Icons.Filled.Warning,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(20.dp),
         )
         Text(
             text,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onErrorContainer,
         )
-    }
-}
-
-/**
- * 점수를 원호로 그린다. 시안의 SVG 링과 달리 Canvas로 직접 그리는 이유는,
- * 벡터 리소스로 두면 각도가 고정돼 이벤트 수에 따라 움직일 수 없기 때문이다.
- */
-@Composable
-internal fun ScoreRing(
-    percent: Int,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    val gradient = Brush.linearGradient(
-        listOf(
-            MaterialTheme.colorScheme.secondaryContainer,
-            MaterialTheme.colorScheme.primary,
-        ),
-    )
-
-    Box(contentAlignment = Alignment.Center, modifier = modifier.size(160.dp)) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-            val stroke = Stroke(width = 14f, cap = StrokeCap.Round)
-            drawArc(
-                color = track,
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                style = stroke,
-            )
-            drawArc(
-                brush = gradient,
-                startAngle = -90f,
-                sweepAngle = 360f * percent / 100f,
-                useCenter = false,
-                style = stroke,
-            )
-        }
-        content()
     }
 }

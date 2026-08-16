@@ -106,7 +106,9 @@ class SessionEngine(
         save(savedEvent)
 
         val finalSession = updatedSession.copy(id = sessionId)
-        val channelNames = channels.map(Channel::name).toSet()
+        // 알림 문구에 그대로 박히는 값이라 `name`(KAKAO)이 아니라 `label`(카카오톡)을 쓴다 —
+        // 사용자가 읽는 자리에 내부 식별자가 나갈 이유가 없다. 저장은 여전히 `name`이다.
+        val channelNames = channels.map(Channel::label).toSet()
         when {
             previousState == null ->
                 // 이 세션에서 처음 잡힌 신호 — 채널이 하나뿐이어도 사용자에게 알려야 한다.

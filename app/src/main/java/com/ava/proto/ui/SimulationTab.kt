@@ -6,11 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,8 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ava.proto.capture.Channel
 
 /**
  * 데모와 오탐 검증을 한 탭에 묶었다. 둘 다 "신호를 일부러 만들어 파이프라인을 통과시키는"
@@ -46,17 +42,17 @@ fun SimulationTab(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+        verticalArrangement = Arrangement.spacedBy(26.dp),
     ) {
         ScreenTitle("시뮬레이션", "피싱 신호를 직접 발생시켜 탐지 동작을 확인합니다.")
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionLabel("채널별 데모", color = MaterialTheme.colorScheme.primary)
+            SectionHeader("채널별 데모")
             CleanCard {
-                Column {
+                Column(modifier = Modifier.padding(vertical = 6.dp)) {
                     SimulationRow(
-                        icon = Icons.AutoMirrored.Filled.Send,
-                        tint = MaterialTheme.colorScheme.primaryContainer,
+                        icon = channelIcon(Channel.KAKAO),
+                        tint = channelColor(Channel.KAKAO),
                         title = "카카오톡 피싱",
                         description = "기관 사칭 메시지가 카카오톡으로 도착한 상황을 재현합니다.",
                         enabled = !isBusy && !autoTestRunning,
@@ -64,17 +60,17 @@ fun SimulationTab(
                     )
                     RowDivider()
                     SimulationRow(
-                        icon = Icons.Filled.Email,
-                        tint = MaterialTheme.colorScheme.secondaryContainer,
+                        icon = channelIcon(Channel.SMS),
+                        tint = channelColor(Channel.SMS),
                         title = "SMS 피싱",
-                        description = "카카오톡 데모 직후 실행하면 같은 세션이 ESCALATED로 격상됩니다.",
+                        description = "카카오톡 데모 직후 실행하면 같은 사건으로 묶입니다.",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoSms,
                     )
                     RowDivider()
                     SimulationRow(
-                        icon = Icons.Filled.Call,
-                        tint = MaterialTheme.colorScheme.error,
+                        icon = channelIcon(Channel.CALL),
+                        tint = channelColor(Channel.CALL),
                         title = "통화 전사본",
                         description = "녹음 폴더에 넣어둔 통화 텍스트(.txt)를 지금 분석합니다.",
                         enabled = idle,
@@ -99,19 +95,19 @@ fun SimulationTab(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionLabel("오탐 검증 (자동 순환)")
+            SectionHeader("오탐 검증")
             Text(
-                "정상 메시지와 피싱 메시지를 번갈아 발송해 오탐/미탐을 확인합니다.",
+                "정상 메시지와 피싱 메시지를 번갈아 발송해 오탐·미탐을 확인합니다.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             if (!autoTestRunning) {
                 CleanCard {
-                    Column {
+                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         SimulationRow(
                             icon = Icons.Filled.Refresh,
-                            tint = MaterialTheme.colorScheme.primaryContainer,
+                            tint = channelColor(Channel.KAKAO),
                             title = "카카오톡 순환",
                             description = "정상 ↔ 피싱 카카오톡 메시지를 번갈아 발송합니다.",
                             enabled = !isBusy && !callBusy,
@@ -121,7 +117,7 @@ fun SimulationTab(
                         RowDivider()
                         SimulationRow(
                             icon = Icons.Filled.Refresh,
-                            tint = MaterialTheme.colorScheme.secondaryContainer,
+                            tint = channelColor(Channel.SMS),
                             title = "SMS 순환",
                             description = "정상 ↔ 피싱 문자를 번갈아 발송합니다.",
                             enabled = !isBusy && !callBusy,
@@ -150,16 +146,15 @@ private fun SimulationRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconBubble(icon, tint)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
@@ -170,9 +165,4 @@ private fun SimulationRow(
         }
         OutlinedPillButton(text = runLabel, enabled = enabled, onClick = onRun)
     }
-}
-
-@Composable
-private fun RowDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
