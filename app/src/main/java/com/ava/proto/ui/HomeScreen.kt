@@ -8,12 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -35,8 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ava.proto.R
 
 /** 하단 탭. 화면이 늘어나도 진입점은 이 enum 하나로 유지한다. */
 private enum class HomeTab(val label: String, val icon: ImageVector) {
@@ -84,15 +86,18 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Filled.Lock,
+                        // 마스코트는 여러 색(보라 몸통·흰 방패·분홍 볼)이 형태를 이루므로
+                        // `tint` 를 걸지 않는다 — 한 색으로 칠하면 실루엣만 남는다.
+                        // 원본의 흰 배경을 따내 투명으로 만들었기 때문에 라이트·다크
+                        // 어느 쪽에도 그대로 올라간다.
+                        Image(
+                            painterResource(R.drawable.ic_avamon_logo),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(32.dp),
                         )
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
-                            "AVA-Detection",
+                            "Avamon",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,

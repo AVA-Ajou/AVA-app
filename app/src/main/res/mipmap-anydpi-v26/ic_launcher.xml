@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- minSdk 26 이라 어댑티브 아이콘 한 벌이면 모든 기기를 덮는다 (래스터 백업 불필요).
+     `monochrome` 은 두지 않는다 — 테마 아이콘은 전경을 단색 실루엣으로 뭉개는데,
+     마스코트는 보라 몸통·흰 방패·분홍 볼의 대비가 형태의 전부라 통째로 덩어리가 된다. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+</adaptive-icon>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 런처 아이콘 배경. 팀이 만든 원본 아이콘이 흰 라운드 사각형 위에 마스코트를 얹은
+         형태라 그 배경을 그대로 쓴다 — 색을 바꾸면 원본과 다른 아이콘이 된다. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>
