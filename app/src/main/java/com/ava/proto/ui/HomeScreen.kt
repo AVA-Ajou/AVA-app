@@ -152,13 +152,17 @@ fun HomeScreen(
             when (selectedTab) {
                 HomeTab.DASHBOARD -> DashboardTab(
                     events = uiState.events,
+                    escalatedSessionIds = uiState.escalatedSessionIds,
                     recordingFolderUri = recordingFolderUri,
                     notificationAccessGranted = notificationAccessGranted,
                     onScanNow = onScanNow,
                     onViewAllEvents = { selectedTab = HomeTab.HISTORY },
                 )
 
-                HomeTab.HISTORY -> HistoryTab(events = uiState.events)
+                HomeTab.HISTORY -> HistoryTab(
+                    events = uiState.events,
+                    escalatedSessionIds = uiState.escalatedSessionIds,
+                )
 
                 HomeTab.SIMULATION -> SimulationTab(
                     isBusy = isBusy,

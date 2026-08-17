@@ -42,6 +42,7 @@ import com.ava.proto.data.RiskSignal
 @Composable
 fun DashboardTab(
     events: List<EventEntity>,
+    escalatedSessionIds: Set<Long> = emptySet(),
     recordingFolderUri: Uri?,
     notificationAccessGranted: Boolean,
     onScanNow: () -> Unit,
@@ -76,7 +77,7 @@ fun DashboardTab(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionHeader("최근 활동", actionLabel = "전체 보기", onAction = onViewAllEvents)
-            RecentActivityCard(events = events.take(3))
+            RecentActivityCard(events = events.take(3), escalatedSessionIds = escalatedSessionIds)
         }
     }
 }
@@ -223,7 +224,7 @@ private fun ChannelRow(channel: Channel, status: String, active: Boolean) {
 }
 
 @Composable
-private fun RecentActivityCard(events: List<EventEntity>) {
+private fun RecentActivityCard(events: List<EventEntity>, escalatedSessionIds: Set<Long> = emptySet()) {
     CleanCard {
         if (events.isEmpty()) {
             Text(
@@ -237,14 +238,17 @@ private fun RecentActivityCard(events: List<EventEntity>) {
         Column(modifier = Modifier.padding(vertical = 6.dp)) {
             events.forEachIndexed { index, event ->
                 if (index > 0) RowDivider()
-                ActivityRow(event)
+                ActivityRow(
+                    event = event,
+                    isMultiChannel = event.sessionId != null && event.sessionId in escalatedSessionIds,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ActivityRow(event: EventEntity) {
+private fun ActivityRow(event: EventEntity, isMultiChannel: Boolean = false) {
     // 주의보를 경보와 같은 빨강으로 묶지 않는다. 이 구간은 모델이 애매하다고 본 자리라
     // 실제로 정상이 섞여 들어온다 — 색까지 같으면 사용자가 둘을 구분할 방법이 없다.
     // 예보는 그보다 한 칸 더 약해 노랑으로 둔다. 어느 판정기도 위험하다고 하지 않았다.
@@ -304,14 +308,23 @@ private fun ActivityRow(event: EventEntity) {
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (risky) {
-                Text(
-                    "피싱 의심",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error,
+            if (risky || isMultiChannel) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.padding(top = 4.dp),
-                )
+                ) {
+                    if (risky) {
+                        Text(
+                            "피싱 의심",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    if (isMultiChannel) {
+                        MultiChannelTag()
+                    }
+                }
             }
         }
     }

@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 /**
  * 세션은 화면에 목록으로 나오지 않는다 — 사용자가 읽는 것은 이벤트 카드와 시스템 알림이고,
@@ -26,6 +27,10 @@ interface SessionDao {
         """,
     )
     suspend fun findActive(referenceTime: Long, counterpart: String?): SessionEntity?
+
+    /** ESCALATED 세션의 id 목록을 실시간으로 흘린다. UI의 [다채널 탐지] 태그에 쓴다. */
+    @Query("SELECT id FROM sessions WHERE state = 'ESCALATED'")
+    fun observeEscalatedIds(): Flow<List<Long>>
 
     @Insert
     suspend fun insert(session: SessionEntity): Long

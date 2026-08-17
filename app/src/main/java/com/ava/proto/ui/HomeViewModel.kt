@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -27,6 +28,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 data class HomeUiState(
     val events: List<EventEntity> = emptyList(),
+    /** ESCALATED 상태인 세션 id 집합. EventCard의 [다채널 탐지] 태그에 쓴다. */
+    val escalatedSessionIds: Set<Long> = emptySet(),
 )
 
 /** 통화 전사본 분석의 진행 상태. */
@@ -56,9 +59,15 @@ class HomeViewModel(
 
     private val context: Context get() = getApplication<Application>()
 
-    val uiState: StateFlow<HomeUiState> = database.eventDao().observeRecent()
-        .map { events -> HomeUiState(events = events) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+    val uiState: StateFlow<HomeUiState> = combine(
+        database.eventDao().observeRecent(),
+        database.sessionDao().observeEscalatedIds(),
+    ) { events, escalatedIds ->
+        HomeUiState(
+            events = events,
+            escalatedSessionIds = escalatedIds.toSet(),
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     private val _isBusy = MutableStateFlow(false)
     val isBusy: StateFlow<Boolean> = _isBusy.asStateFlow()

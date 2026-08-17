@@ -40,7 +40,11 @@ import java.time.format.DateTimeFormatter
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
 @Composable
-fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
+fun HistoryTab(
+    events: List<EventEntity>,
+    escalatedSessionIds: Set<Long> = emptySet(),
+    modifier: Modifier = Modifier,
+) {
     // 아래 카드가 붙이는 배지와 같은 갈래로 센다. 둘을 한 숫자에 뭉치면 규칙이 뒷받침한
     // 경보와 모델만 본 `경보우려`가 섞여, 요약과 카드가 서로 다른 말을 한다.
     val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH }
@@ -120,7 +124,12 @@ fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
                 )
             }
         }
-        events.forEach { EventCard(it) }
+        events.forEach { event ->
+            EventCard(
+                event = event,
+                isMultiChannel = event.sessionId != null && event.sessionId in escalatedSessionIds,
+            )
+        }
     }
 }
 
@@ -241,7 +250,7 @@ private fun TierRow(color: Color, name: String, detail: String) {
 }
 
 @Composable
-internal fun EventCard(event: EventEntity) {
+internal fun EventCard(event: EventEntity, isMultiChannel: Boolean = false) {
     CleanCard {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -313,41 +322,48 @@ internal fun EventCard(event: EventEntity) {
             //
             // **등급 판단을 여기서 다시 하지 않는다.** 위험도 문턱은 전부
             // `BackendClassificationClient` 에 있고, 이 화면은 [RiskSignal]에 이름과 색만 붙인다.
-            if (event.riskSignal != RiskSignal.NONE) {
-                val alert = event.riskSignal == RiskSignal.HIGH
-                val unbacked = event.riskSignal == RiskSignal.HIGH_UNBACKED
-                val watch = event.riskSignal == RiskSignal.FORECAST
-                val tint = when {
-                    alert -> MaterialTheme.colorScheme.error
-                    watch -> forecast
-                    else -> caution
-                }
+            if (event.riskSignal != RiskSignal.NONE || isMultiChannel) {
                 Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .border(1.dp, tint, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
-                    Icon(
-                        Icons.Filled.Warning,
-                        contentDescription = null,
-                        tint = tint,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        when {
-                            // `경보우려`로 낮춰 부르는 이유 — 모델만 위험하다고 본 상태라
-                            // 규칙이 뒷받침하지 않는다. 알림은 경보와 똑같이 나가되(진짜
-                            // 피싱의 19%가 여기 있다) 말로는 단정하지 않는다.
-                            watch -> "예보"
-                            unbacked -> "경보우려"
-                            alert -> "경보"
-                            else -> "주의보"
-                        },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = tint,
-                    )
+                    if (event.riskSignal != RiskSignal.NONE) {
+                        val alert = event.riskSignal == RiskSignal.HIGH
+                        val unbacked = event.riskSignal == RiskSignal.HIGH_UNBACKED
+                        val watch = event.riskSignal == RiskSignal.FORECAST
+                        val tint = when {
+                            alert -> MaterialTheme.colorScheme.error
+                            watch -> forecast
+                            else -> caution
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .border(1.dp, tint, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Icon(
+                                Icons.Filled.Warning,
+                                contentDescription = null,
+                                tint = tint,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                when {
+                                    watch -> "예보"
+                                    unbacked -> "경보우려"
+                                    alert -> "경보"
+                                    else -> "주의보"
+                                },
+                                style = MaterialTheme.typography.labelLarge,
+                                color = tint,
+                            )
+                        }
+                    }
+                    if (isMultiChannel) {
+                        MultiChannelTag()
+                    }
                 }
             }
         }
@@ -380,3 +396,36 @@ private fun StageBadge(tint: Color, text: String) {
 
 internal fun formatTime(epochMillis: Long): String =
     Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(timeFormatter)
+
+/**
+ * 같은 시간 창 안에 다른 채널에서도 신호가 잡혀 세션이 ESCALATED로 격상됐음을 표시하는 태그.
+ *
+ * 위험도 배지와 나란히 붙는다. 위험도는 "이 메시지 자체가 얼마나 위험한가"를 뜻하고,
+ * 이 태그는 "다른 채널과 엮여 있다"는 맥락 정보다 — 둘은 다른 층위의 정보라 함께 보여도
+ * 충돌하지 않는다. 섞이지 않도록 보라 계열 색을 써서 위험도 배지(빨강·주황·노랑)와 구분한다.
+ */
+@Composable
+internal fun MultiChannelTag() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.secondaryContainer,
+                RoundedCornerShape(8.dp),
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Icon(
+            Icons.Filled.Warning,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            "다채널 탐지",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
