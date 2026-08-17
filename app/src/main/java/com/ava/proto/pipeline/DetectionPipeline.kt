@@ -60,7 +60,7 @@ class DetectionPipeline(
 
         // 텍스트가 있는 이벤트는 내용과 무관하게 예외 없이 분류를 거친다 — 게이트 없음.
         return try {
-            EventStatus.ANALYZED to classificationClient.classify(text)
+            EventStatus.ANALYZED to classificationClient.classify(text, captured.channel)
         } catch (e: Exception) {
             // 분류 실패를 RiskSignal.NONE으로만 남기면 "무해하다고 확인됨"과 구분이 안 된다.
             // CLASSIFICATION_FAILED로 명시해서, 게이트 시절의 "NONE = 분석 안 됨" 모호함이

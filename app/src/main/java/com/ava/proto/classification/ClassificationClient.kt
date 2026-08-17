@@ -1,5 +1,6 @@
 package com.ava.proto.classification
 
+import com.ava.proto.capture.Channel
 import com.ava.proto.data.RiskSignal
 
 data class ClassificationVerdict(
@@ -34,5 +35,5 @@ data class ClassificationVerdict(
  * ([com.ava.proto.pipeline.DetectionPipeline])은 누가 왔는지 모른다.
  */
 interface ClassificationClient {
-    suspend fun classify(text: String): ClassificationVerdict
+    suspend fun classify(text: String, channel: Channel): ClassificationVerdict
 }

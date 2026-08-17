@@ -1,5 +1,7 @@
 package com.ava.proto.classification
 
+import com.ava.proto.capture.Channel
+
 /**
  * 서버 주소가 없을 때 쓰는 대역 [ClassificationClient] 구현체.
  *
@@ -8,7 +10,7 @@ package com.ava.proto.classification
  * 설정이 덜 돼도 앱은 떠야 하므로 지우지 말 것.
  */
 class LocalKeywordClassificationClient : ClassificationClient {
-    override suspend fun classify(text: String): ClassificationVerdict {
+    override suspend fun classify(text: String, channel: Channel): ClassificationVerdict {
         val result = KeywordFilter.evaluate(text)
         return ClassificationVerdict(result.riskSignal, result.matchedPhrase)
     }

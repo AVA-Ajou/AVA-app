@@ -1,6 +1,7 @@
 package com.ava.proto.classification
 
 import android.util.Log
+import com.ava.proto.capture.Channel
 import com.ava.proto.data.RiskSignal
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,12 +44,8 @@ private const val CONFIDENT_ALERT_THRESHOLD = 80.0
  */
 private const val CAUTION_THRESHOLD = 20.0
 
-/**
- * 서버가 어느 어댑터를 켤지 고르는 값(`adapters/voice`). 생성자 인자로 열어뒀었는데 다른
- * 값을 넘기는 곳이 없었다 — 서버가 어댑터를 하나만 올리기 때문이다. 베이스가 다른 어댑터를
- * 섞으면 확률이 조용히 틀어져서 그렇다(`../Detection-Server/README.md`).
- */
-private const val TASK = "voice"
+/** 채널을 서버 task 이름으로 변환한다. CALL은 Gemma LoRA, 나머지는 Claude API. */
+private fun Channel.toTask() = if (this == Channel.CALL) "voice" else "sms"
 
 /**
  * 파인튜닝한 Gemma를 올린 서버(`Detection-Server`)에 판정을 맡기는 [ClassificationClient].
@@ -74,8 +71,8 @@ class BackendClassificationClient(private val baseUrl: String) : ClassificationC
      * 지금은 단계를 서버의 정규식이 뽑으므로 비용이 없고, 위험도와 함께 나온다.
      * 근거 문장은 화면에 쓰지 않아 아예 요청하지 않는다(`reason` 을 켜지 않는다).
      */
-    override suspend fun classify(text: String): ClassificationVerdict = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("text", text).put("task", TASK)
+    override suspend fun classify(text: String, channel: Channel): ClassificationVerdict = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("text", text).put("task", channel.toTask())
         val response = post(body)
 
         val risk = response.getDouble("risk")
