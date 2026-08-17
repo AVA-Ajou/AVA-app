@@ -96,6 +96,28 @@ class DemoInjector(private val context: Context) {
         )
     }
 
+    /**
+     * 카드배달 사칭의 **후속 문자**를 시뮬레이션한다.
+     *
+     * 앞선 통화만으로는 규칙이 1단계(명의도용 언급)까지밖에 못 간다 — 사기범이 협박도
+     * 계좌 요구도 하지 않고 "확인해보세요"로 끊기 때문이다. 사용자에게는 친절한 안내로
+     * 읽힌다. 이 문자가 10분 안에 도착해야 2단계(주소 접속·정보 입력)가 되고, 두 조각이
+     * 한 사건으로 묶인다.
+     *
+     * **다채널이 필요한 이유를 한 시나리오로 보여주는 자리다.** 기존 카톡·SMS 데모는
+     * 양쪽 다 협박 문구를 담고 있어 단독으로도 잡히고, 그래서 격상이 무엇을 더 해주는지
+     * 드러나지 않는다.
+     */
+    fun injectCardDeliveryFollowUp() {
+        postDemoNotification(
+            id = System.currentTimeMillis().toInt(),
+            demoChannel = "SMS",
+            title = "1544-0000",
+            text = "[금융감독원] 명의도용 피해 접수 안내. 본인확인을 위해 아래 주소로 들어가 " +
+                "정보를 입력해 주세요. https://fss-report.co.kr",
+        )
+    }
+
     /** 오탐 검증용 — 피싱 키워드가 없는 정상 SMS를 순환 발송한다. */
     fun injectSmsNormal() {
         val (title, text) = SMS_NORMAL_MESSAGES[smsNormalIndex % SMS_NORMAL_MESSAGES.size]

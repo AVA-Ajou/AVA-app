@@ -76,6 +76,8 @@ class HomeViewModel(
 
     fun demoSms() { demoInjector.injectSms() }
 
+    fun demoCardDeliveryFollowUp() { demoInjector.injectCardDeliveryFollowUp() }
+
     // ── 오탐 검증: 정상 ↔ 피싱 자동 순환 ─────────────────────────────────────
 
     private val _autoTestRunning = MutableStateFlow(false)

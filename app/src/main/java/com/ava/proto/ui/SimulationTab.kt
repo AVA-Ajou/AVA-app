@@ -30,6 +30,7 @@ fun SimulationTab(
     autoTestStatus: String,
     onDemoKakao: () -> Unit,
     onDemoSms: () -> Unit,
+    onDemoCardFollowUp: () -> Unit,
     onDemoCall: () -> Unit,
     onCancelCallDemo: () -> Unit,
     onStartAutoTestKakao: () -> Unit,
@@ -76,6 +77,15 @@ fun SimulationTab(
                         enabled = idle,
                         onRun = onDemoCall,
                         runLabel = "분석",
+                    )
+                    RowDivider()
+                    SimulationRow(
+                        icon = channelIcon(Channel.SMS),
+                        tint = channelColor(Channel.SMS),
+                        title = "카드배달 후속 문자",
+                        description = "통화 분석 직후 실행하면 두 조각이 한 사건으로 묶입니다.",
+                        enabled = !isBusy && !autoTestRunning,
+                        onRun = onDemoCardFollowUp,
                     )
                 }
             }
