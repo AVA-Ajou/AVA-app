@@ -118,8 +118,8 @@ class DemoInjector(private val context: Context) {
             id = System.currentTimeMillis().toInt(),
             demoChannel = "SMS",
             title = "1544-0000",
-            text = "[금융감독원] 명의도용 피해 접수 안내. 본인확인을 위해 아래 주소로 들어가 " +
-                "정보를 입력해 주세요. https://fss-report.co.kr",
+            text = "[금융감독원] 명의도용 피해 접수 안내. 아래 설치 링크에서 본인확인 후 " +
+                "피해 접수를 진행해 주세요. https://fss-report.co.kr",
         )
     }
 
