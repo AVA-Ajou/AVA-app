@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import com.ava.proto.capture.RecordingScanWorker
 import com.ava.proto.data.AppDatabase
 import com.ava.proto.data.EventEntity
+import com.ava.proto.data.SessionState
 import com.ava.proto.demo.DemoInjector
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -27,6 +29,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 data class HomeUiState(
     val events: List<EventEntity> = emptyList(),
+    /**
+     * 두 채널 이상이 겹쳐 격상된 세션의 id. 기록 탭이 이 집합으로 **다채널 딱지**를 붙인다.
+     * 세션 전체를 내려보내지 않는 이유는 화면이 지금 필요로 하는 것이 "이 이벤트가 다채널
+     * 사건에 속하는가" 하나뿐이어서다.
+     */
+    val escalatedSessionIds: Set<Long> = emptySet(),
 )
 
 /** 통화 전사본 분석의 진행 상태. */
@@ -56,9 +64,17 @@ class HomeViewModel(
 
     private val context: Context get() = getApplication<Application>()
 
-    val uiState: StateFlow<HomeUiState> = database.eventDao().observeRecent()
-        .map { events -> HomeUiState(events = events) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+    val uiState: StateFlow<HomeUiState> = combine(
+        database.eventDao().observeRecent(),
+        database.sessionDao().observeRecent(),
+    ) { events, sessions ->
+        HomeUiState(
+            events = events,
+            escalatedSessionIds = sessions
+                .filter { it.state == SessionState.ESCALATED }
+                .mapTo(mutableSetOf()) { it.id },
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     private val _isBusy = MutableStateFlow(false)
     val isBusy: StateFlow<Boolean> = _isBusy.asStateFlow()

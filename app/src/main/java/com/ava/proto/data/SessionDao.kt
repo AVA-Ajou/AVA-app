@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 /**
  * 세션은 화면에 목록으로 나오지 않는다 — 사용자가 읽는 것은 이벤트 카드와 시스템 알림이고,
@@ -48,6 +49,17 @@ interface SessionDao {
         """,
     )
     suspend fun findActiveAnyCounterpart(referenceTime: Long): SessionEntity?
+
+    /**
+     * 기록 탭이 **다채널 딱지**를 붙이려고 쓴다.
+     *
+     * 격상은 지금까지 알림과 DB에만 남고 화면에는 흔적이 없었다 — 앱을 열면 이벤트 카드
+     * 두 장이 그냥 따로 놓여 있어서, 다채널 융합이 이 앱의 핵심인데 정작 결과를 볼 수가
+     * 없었다. 세션 화면 전체를 만드는 것은 다음 단계이고, 여기서는 **어느 이벤트가 다채널
+     * 사건에 속하는지**만 화면에 넘긴다.
+     */
+    @Query("SELECT * FROM sessions ORDER BY updatedAt DESC LIMIT 50")
+    fun observeRecent(): Flow<List<SessionEntity>>
 
     @Insert
     suspend fun insert(session: SessionEntity): Long

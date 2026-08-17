@@ -159,7 +159,10 @@ fun HomeScreen(
                     onViewAllEvents = { selectedTab = HomeTab.HISTORY },
                 )
 
-                HomeTab.HISTORY -> HistoryTab(events = uiState.events)
+                HomeTab.HISTORY -> HistoryTab(
+                    events = uiState.events,
+                    escalatedSessionIds = uiState.escalatedSessionIds,
+                )
 
                 HomeTab.SIMULATION -> SimulationTab(
                     isBusy = isBusy,

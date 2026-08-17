@@ -40,7 +40,11 @@ import java.time.format.DateTimeFormatter
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
 @Composable
-fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
+fun HistoryTab(
+    events: List<EventEntity>,
+    escalatedSessionIds: Set<Long>,
+    modifier: Modifier = Modifier,
+) {
     // 아래 카드가 붙이는 배지와 같은 갈래로 센다. 둘을 한 숫자에 뭉치면 규칙이 뒷받침한
     // 경보와 모델만 본 `경보우려`가 섞여, 요약과 카드가 서로 다른 말을 한다.
     val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH }
@@ -74,6 +78,16 @@ fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
                 content = MaterialTheme.colorScheme.primary,
                 container = MaterialTheme.colorScheme.surfaceContainerHigh,
             )
+            // 사건 수가 아니라 **다채널로 격상된 사건 수**다. 이벤트 건수와 따로 세는 이유는
+            // 두 숫자가 다른 것을 재기 때문이다 — 이벤트는 몇 건이 들어왔나이고, 이쪽은
+            // 몇 번의 시도가 경로를 갈아타며 이어졌나다.
+            if (escalatedSessionIds.isNotEmpty()) {
+                StatusBadge(
+                    "다채널 ${escalatedSessionIds.size}",
+                    content = MaterialTheme.colorScheme.error,
+                    container = MaterialTheme.colorScheme.errorContainer,
+                )
+            }
             StatusBadge(
                 "경보 $riskyCount",
                 content = MaterialTheme.colorScheme.error,
@@ -120,7 +134,7 @@ fun HistoryTab(events: List<EventEntity>, modifier: Modifier = Modifier) {
                 )
             }
         }
-        events.forEach { EventCard(it) }
+        events.forEach { EventCard(it, multiChannel = it.sessionId in escalatedSessionIds) }
     }
 }
 
@@ -241,7 +255,7 @@ private fun TierRow(color: Color, name: String, detail: String) {
 }
 
 @Composable
-internal fun EventCard(event: EventEntity) {
+internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
     CleanCard {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -254,11 +268,25 @@ internal fun EventCard(event: EventEntity) {
             ) {
                 IconBubble(channelIcon(event.channel), channelColor(event.channel), size = 40)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        event.channel.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    // 딱지는 채널 이름 옆에 붙인다. 이 카드가 **혼자가 아니라는 것**을
+                    // 알려주는 표시라, 판정 배지(아래)와 섞이면 등급으로 읽힌다.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            event.channel.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        if (multiChannel) {
+                            StatusBadge(
+                                "다채널",
+                                content = MaterialTheme.colorScheme.error,
+                                container = MaterialTheme.colorScheme.errorContainer,
+                            )
+                        }
+                    }
                     Text(
                         event.sourceLabel,
                         style = MaterialTheme.typography.labelSmall,
