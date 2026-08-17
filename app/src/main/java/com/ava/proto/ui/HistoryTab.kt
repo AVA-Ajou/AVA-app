@@ -134,7 +134,18 @@ fun HistoryTab(
                 )
             }
         }
-        events.forEach { EventCard(it, multiChannel = it.sessionId in escalatedSessionIds) }
+        // 딱지는 **합류한 쪽에만** 붙인다. 세션을 연 첫 연락은 그때까지 채널이 하나뿐이라
+        // 다채널이 아니었고, 뒤이어 다른 경로로 들어온 연락이 사건을 다채널로 만든다.
+        // 둘 다 붙이면 "처음부터 다채널이었다"로 읽혀, 단독으로는 확정되지 않았다는
+        // 이 화면의 요점이 흐려진다.
+        val joinedEventIds = events
+            .filter { it.sessionId != null && it.sessionId in escalatedSessionIds }
+            .groupBy { it.sessionId }
+            .values
+            .flatMap { group -> group.sortedBy { it.capturedAt }.drop(1) }
+            .mapTo(mutableSetOf()) { it.id }
+
+        events.forEach { EventCard(it, multiChannel = it.id in joinedEventIds) }
     }
 }
 
