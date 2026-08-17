@@ -121,8 +121,8 @@ internal fun SectionHeader(
 }
 
 @Composable
-internal fun ScreenTitle(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+internal fun ScreenTitle(title: String, subtitle: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             title,
             style = MaterialTheme.typography.headlineLarge,
