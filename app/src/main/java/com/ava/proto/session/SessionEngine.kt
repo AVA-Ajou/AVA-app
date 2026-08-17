@@ -43,6 +43,11 @@ class SessionEngine(
     suspend fun ingest(event: EventEntity): EventEntity {
         // 신호가 없는 이벤트(예: STT 대기 중인 통화 녹음, 분류 실패, 또는 실제로 무해하다고
         // 분류된 이벤트)는 기록만 하고 세션에는 영향을 주지 않는다.
+        //
+        // **[RiskSignal.NONE]만 걸러낸다.** 등급 이름이 붙은 것은 예보까지 전부 알린다 —
+        // 예보는 판정기 어느 쪽도 위험하다고 하지 않은 구간이라 실측에서 9건 중 6건이
+        // 정상이었지만, 나머지 3건이 진짜 피싱이었다. **미탐은 돈이 나가고 오탐은 짜증에
+        // 그친다**는 이 프로젝트의 기준을 이 문턱에도 그대로 적용한 것이다.
         if (event.riskSignal == RiskSignal.NONE) {
             save(event)
             return event

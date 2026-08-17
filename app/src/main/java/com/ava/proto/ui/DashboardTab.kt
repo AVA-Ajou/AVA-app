@@ -48,7 +48,12 @@ fun DashboardTab(
     onViewAllEvents: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH }
+    // 경보우려까지만 센다. 알림은 예보에서부터 나가지만, 이 화면 맨 위의 큰 숫자는 **지금
+    // 당장 봐야 하는 건수**를 뜻한다. 판정기 어느 쪽도 확신하지 않은 예보까지 여기 넣으면
+    // 그 숫자가 무엇을 세는지 흐려진다 — 등급별 내역은 기록 탭의 칩이 보여준다.
+    val riskyCount = events.count {
+        it.riskSignal == RiskSignal.HIGH || it.riskSignal == RiskSignal.HIGH_UNBACKED
+    }
 
     Column(
         modifier = modifier,
@@ -242,8 +247,11 @@ private fun RecentActivityCard(events: List<EventEntity>) {
 private fun ActivityRow(event: EventEntity) {
     // 주의보를 경보와 같은 빨강으로 묶지 않는다. 이 구간은 모델이 애매하다고 본 자리라
     // 실제로 정상이 섞여 들어온다 — 색까지 같으면 사용자가 둘을 구분할 방법이 없다.
+    // 예보는 그보다 한 칸 더 약해 노랑으로 둔다. 어느 판정기도 위험하다고 하지 않았다.
     val risky = event.riskSignal == RiskSignal.HIGH
+    val unbacked = event.riskSignal == RiskSignal.HIGH_UNBACKED
     val cautious = event.riskSignal == RiskSignal.CAUTION
+    val watch = event.riskSignal == RiskSignal.FORECAST
     Row(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier
@@ -251,10 +259,11 @@ private fun ActivityRow(event: EventEntity) {
             .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         IconBubble(
-            if (risky || cautious) Icons.Filled.Warning else Icons.Filled.CheckCircle,
+            if (risky || unbacked || cautious || watch) Icons.Filled.Warning else Icons.Filled.CheckCircle,
             when {
                 risky -> MaterialTheme.colorScheme.error
-                cautious -> caution
+                unbacked || cautious -> caution
+                watch -> forecast
                 else -> MaterialTheme.colorScheme.tertiaryContainer
             },
             size = 32,
@@ -279,7 +288,9 @@ private fun ActivityRow(event: EventEntity) {
             Text(
                 when {
                     risky -> "피싱 의심 신호 탐지"
+                    unbacked -> "피싱 경보우려"
                     cautious -> "피싱 주의보"
+                    watch -> "피싱 예보"
                     else -> "정상 메시지 확인"
                 },
                 style = MaterialTheme.typography.bodyMedium,

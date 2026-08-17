@@ -115,6 +115,21 @@ private val CautionDark = Color(0xFFFFB77C)
 val caution: Color
     @Composable get() = if (isSystemInDarkTheme()) CautionDark else CautionLight
 
+/**
+ * 예보에 쓰는 노란색. [caution]보다 한 칸 약한 자리다.
+ *
+ * 주황과 갈라놓은 이유는 **켜진 판정기의 수가 다르기 때문이다** — 주황(주의보·경보우려)은
+ * 모델이나 규칙 중 한쪽이 위험하다고 본 자리고, 노랑은 어느 쪽도 그러지 않았는데 모델
+ * 점수만 바닥을 넘은 자리다. 같은 주황을 쓰면 "한 명이라도 손을 들었나"가 색에서 사라진다.
+ *
+ * 라이트 값을 갈색에 가깝게 잡은 것은 순한 노랑이 흰 배경에서 읽히지 않아서다.
+ */
+private val ForecastLight = Color(0xFF8A6100)
+private val ForecastDark = Color(0xFFF2CE6A)
+
+val forecast: Color
+    @Composable get() = if (isSystemInDarkTheme()) ForecastDark else ForecastLight
+
 @Composable
 fun ProtoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
