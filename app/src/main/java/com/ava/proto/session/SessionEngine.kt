@@ -71,7 +71,21 @@ class SessionEngine(
         val referenceTime = event.capturedAt
         val processedAt = now()
 
+        // 같은 상대로 좁혀지는 세션을 먼저 찾고, 없으면 **다른 채널의** 활성 세션에 합류시킨다.
+        //
+        // counterpart 비교는 같은 채널 안에서만 뜻이 있다. 카카오톡은 대화방 이름을,
+        // 문자는 전화번호를 counterpart로 쓰기 때문에 같은 사기범이 같은 번호로 보내도
+        // 두 값이 같아질 수 없다. 그 결과 카톡+문자는 격상된 적이 한 번도 없고 통화가 낀
+        // 조합만 격상됐다 — 문서와 데모 안내는 카톡→문자가 격상된다고 적혀 있었지만
+        // 실제로는 세션이 둘로 갈라졌다.
+        //
+        // **채널이 다르면 식별자를 비교하지 않는다.** 비교할 수 없는 값을 비교하는 대신,
+        // 같은 시간 창에 서로 다른 경로로 신호가 들어왔다는 사실 자체를 합류 근거로 본다.
+        // 같은 채널이 또 들어온 경우는 여전히 위 조건을 통과해야 한다 — 그 자리에서는
+        // 식별자가 서로 비교 가능한 값이고, 무관한 두 사람이 섞이는 것을 막아야 한다.
         val existing = sessionDao.findActive(referenceTime, event.counterpart)
+            ?: sessionDao.findActiveAnyCounterpart(referenceTime)
+                ?.takeIf { event.channel !in it.channelsInvolved }
         val previousState = existing?.state
         val session = existing ?: SessionEntity(
             state = SessionState.SUSPECTED,

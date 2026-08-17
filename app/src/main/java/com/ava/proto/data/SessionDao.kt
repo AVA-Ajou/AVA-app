@@ -27,6 +27,28 @@ interface SessionDao {
     )
     suspend fun findActive(referenceTime: Long, counterpart: String?): SessionEntity?
 
+    /**
+     * counterpart를 보지 않고 활성 세션만 찾는다. **[findActive]가 빈손일 때만** 쓴다.
+     *
+     * 위 조건은 같은 채널 안에서는 옳지만 채널을 건너뛰면 성립하지 않는다 — 카카오톡의
+     * counterpart는 대화방 이름("금융감독원")이고 문자의 counterpart는 전화번호
+     * ("010-9999-0000")라, 같은 사기범이 같은 번호로 보내도 **두 문자열이 같아질 경로가 없다.**
+     * 그래서 카톡+문자 조합은 구조적으로 격상되지 않았고, 통화(counterpart가 null)가 낀
+     * 조합만 격상됐다.
+     *
+     * 합류 여부는 [com.ava.proto.session.SessionEngine]이 "이번 채널이 세션에 아직 없는가"로
+     * 한 번 더 거른다. 식별자를 비교할 수 없는 자리에서 억지로 비교하는 대신, **채널이
+     * 다르다는 사실 자체**를 합류 근거로 쓰는 것이다.
+     */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE windowExpiresAt > :referenceTime
+        ORDER BY updatedAt DESC LIMIT 1
+        """,
+    )
+    suspend fun findActiveAnyCounterpart(referenceTime: Long): SessionEntity?
+
     @Insert
     suspend fun insert(session: SessionEntity): Long
 
