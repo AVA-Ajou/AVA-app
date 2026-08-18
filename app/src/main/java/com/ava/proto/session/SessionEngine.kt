@@ -71,7 +71,7 @@ class SessionEngine(
         val referenceTime = event.capturedAt
         val processedAt = now()
 
-        val existing = sessionDao.findActive(referenceTime, event.counterpart)
+        val existing = sessionDao.findActive(referenceTime)
         val previousState = existing?.state
         val session = existing ?: SessionEntity(
             state = SessionState.SUSPECTED,

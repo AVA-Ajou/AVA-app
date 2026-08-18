@@ -13,20 +13,21 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SessionDao {
     /**
-     * counterpart가 null이면(발신자 식별 불가 채널, 즉 통화) 아무 활성 세션에나 합류할 수 있다.
-     * counterpart가 있으면 상대가 같거나(세션도 그 상대로 좁혀져 있거나) 세션이 아직 특정
-     * 상대로 안 좁혀진(counterpart IS NULL) 경우에만 합류한다 — 무관한 두 사람이 시간만
-     * 겹쳤다고 한 세션으로 섞이는 걸 막는다.
+     * 활성 세션 조회. 조건은 **시간 창 하나뿐이다.**
+     *
+     * counterpart(발신자) 일치 조건을 쓰지 않는 이유 — 다채널 공격은 카톡·SMS·통화가
+     * 서로 다른 이름·번호로 오는 경우가 많다. 여기에 도달한 이벤트는 이미 NONE이 아닌
+     * RiskSignal을 가지고 있으므로(SessionEngine이 NONE을 걸러낸다), 10분 창 안에
+     * 위험 신호가 겹쳤다는 사실 자체가 연관의 근거로 충분하다.
      */
     @Query(
         """
         SELECT * FROM sessions
         WHERE windowExpiresAt > :referenceTime
-          AND (:counterpart IS NULL OR counterpart IS NULL OR counterpart = :counterpart)
         ORDER BY updatedAt DESC LIMIT 1
         """,
     )
-    suspend fun findActive(referenceTime: Long, counterpart: String?): SessionEntity?
+    suspend fun findActive(referenceTime: Long): SessionEntity?
 
     /** ESCALATED 세션의 id 목록을 실시간으로 흘린다. UI의 [다채널 탐지] 태그에 쓴다. */
     @Query("SELECT id FROM sessions WHERE state = 'ESCALATED'")
