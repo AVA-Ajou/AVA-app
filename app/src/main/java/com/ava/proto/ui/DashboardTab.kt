@@ -127,7 +127,9 @@ private fun BrandHeader(protected: Boolean, onOpenSettings: () -> Unit) {
         Spacer(Modifier.weight(1f))
         val tint = if (protected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
         Text(
-            if (protected) "보호 중" else "설정 필요",
+            // "보호 중"이 아니라 "감시 중"이다 — 빨간 `위험 신호 1건` 옆에 초록 `보호 중`이
+            // 놓이면 두 말이 부딪힌다. 칩은 채널이 전부 연결됐다는 뜻만 진다.
+            if (protected) "감시 중" else "설정 필요",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = tint,

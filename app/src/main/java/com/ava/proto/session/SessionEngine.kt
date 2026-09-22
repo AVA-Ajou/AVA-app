@@ -83,8 +83,10 @@ class SessionEngine(
         // 같은 시간 창에 서로 다른 경로로 신호가 들어왔다는 사실 자체를 합류 근거로 본다.
         // 같은 채널이 또 들어온 경우는 여전히 위 조건을 통과해야 한다 — 그 자리에서는
         // 식별자가 서로 비교 가능한 값이고, 무관한 두 사람이 섞이는 것을 막아야 한다.
-        val existing = sessionDao.findActive(referenceTime, event.counterpart)
-            ?: sessionDao.findActiveAnyCounterpart(referenceTime)
+        // 두 조건이 창을 **양쪽에서** 닫는다 — `windowExpiresAt > 발생시각`만 보면 창의 끝만
+        // 검사해서, 재분석된 옛 통화가 몇 주 뒤 세션에 합류한다(SessionEntity.firstCapturedAt).
+        val existing = sessionDao.findActive(referenceTime, windowMillis, event.counterpart)
+            ?: sessionDao.findActiveAnyCounterpart(referenceTime, windowMillis)
                 ?.takeIf { event.channel !in it.channelsInvolved }
         val previousState = existing?.state
         val session = existing ?: SessionEntity(
@@ -92,6 +94,7 @@ class SessionEngine(
             createdAt = processedAt,
             updatedAt = processedAt,
             windowExpiresAt = referenceTime + windowMillis,
+            firstCapturedAt = referenceTime,
             channelsInvolved = emptySet(),
         )
 
@@ -108,6 +111,7 @@ class SessionEngine(
             // 세션이 계속 활동 중이라는 뜻이므로 창을 늘린다. 다만 이미 더 늦은 이벤트로
             // 늘어나 있는 창을, 뒤늦게 처리된 과거 이벤트(지연된 통화 등)가 되레 줄이면 안 된다.
             windowExpiresAt = maxOf(session.windowExpiresAt, referenceTime + windowMillis),
+            firstCapturedAt = minOf(session.firstCapturedAt, referenceTime),
             channelsInvolved = channels,
             // 세션이 아직 특정 상대로 안 좁혀져 있었다면(통화만 있었다면) 이번에 식별자가
             // 있는 이벤트(SMS/카톡)가 들어온 순간 그 상대로 좁힌다.

@@ -39,6 +39,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+private val dateTimeFormatter = DateTimeFormatter.ofPattern("M월 d일 HH:mm")
 
 /** 본문을 접어둘 때 보이는 줄 수. 통화 전사본은 여덟 줄이 넘어가 카드 하나가 화면을 다 먹었다. */
 private const val COLLAPSED_LINES = 3
@@ -311,5 +312,12 @@ private fun ExpandableText(text: String, key: Long) {
     }
 }
 
-internal fun formatTime(epochMillis: Long): String =
-    Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(timeFormatter)
+/**
+ * 오늘 것은 시각만, 그 전 것은 날짜를 앞에 붙인다. 시각만 있으면 지난달 통화가
+ * "오늘 밤 23:51"로 읽힌다 — 재분석된 옛 파일이 목록 맨 위에 올 때 실제로 그렇게 보였다.
+ */
+internal fun formatTime(epochMillis: Long): String {
+    val at = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
+    val today = java.time.LocalDate.now(ZoneId.systemDefault())
+    return if (at.toLocalDate() == today) at.format(timeFormatter) else at.format(dateTimeFormatter)
+}

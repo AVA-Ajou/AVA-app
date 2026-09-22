@@ -22,11 +22,12 @@ interface SessionDao {
         """
         SELECT * FROM sessions
         WHERE windowExpiresAt > :referenceTime
+          AND firstCapturedAt <= :referenceTime + :windowMillis
           AND (:counterpart IS NULL OR counterpart IS NULL OR counterpart = :counterpart)
         ORDER BY updatedAt DESC LIMIT 1
         """,
     )
-    suspend fun findActive(referenceTime: Long, counterpart: String?): SessionEntity?
+    suspend fun findActive(referenceTime: Long, windowMillis: Long, counterpart: String?): SessionEntity?
 
     /**
      * counterpart를 보지 않고 활성 세션만 찾는다. **[findActive]가 빈손일 때만** 쓴다.
@@ -45,10 +46,11 @@ interface SessionDao {
         """
         SELECT * FROM sessions
         WHERE windowExpiresAt > :referenceTime
+          AND firstCapturedAt <= :referenceTime + :windowMillis
         ORDER BY updatedAt DESC LIMIT 1
         """,
     )
-    suspend fun findActiveAnyCounterpart(referenceTime: Long): SessionEntity?
+    suspend fun findActiveAnyCounterpart(referenceTime: Long, windowMillis: Long): SessionEntity?
 
     /**
      * 기록 탭이 **다채널 딱지**를 붙이려고 쓴다.

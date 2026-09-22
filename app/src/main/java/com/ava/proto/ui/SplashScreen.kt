@@ -95,7 +95,9 @@ fun SplashScreen(onFinished: () -> Unit) {
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
                 )
                 Image(
-                    painterResource(R.drawable.ic_avamon_mascot),
+                    // 시트의 기본 포즈를 쓴다. 예전 원본 PNG는 바닥 그림자가 밝은 회색으로 구워져 있어
+                    // 다크 모드에서 캐릭터 밑에 흰 얼룩이 떴다.
+                    painterResource(R.drawable.ic_avamon_guard),
                     contentDescription = null,
                     modifier = Modifier.size(156.dp),
                 )
