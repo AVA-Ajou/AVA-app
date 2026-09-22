@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,7 +33,7 @@ import com.ava.proto.R
 import kotlinx.coroutines.delay
 
 /**
- * 브랜드 시트의 `로딩 화면 흐름`을 옮긴 인트로.
+ * 인트로.
  *
  * **진행 막대는 실제 작업량이 아니라 시간으로 찬다.** 앱의 실제 기동은 첫 프레임까지
  * 255~285ms로 측정됐다(`am start -W`). 그대로 두면 화면이 스치듯 지나가서 인트로가 성립하지
@@ -50,7 +50,7 @@ private val STAGES = listOf(
     "신호 수집 중" to 150,
     "신호 분석 중" to 150,
     "위험 여부 판단 중" to 150,
-    "보호 준비 완료!" to 200,
+    "보호 준비 완료" to 200,
 )
 
 @Composable
@@ -85,71 +85,61 @@ fun SplashScreen(onFinished: () -> Unit) {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 40.dp),
+            modifier = Modifier.padding(horizontal = 48.dp),
         ) {
+            // 마스코트 뒤의 옅은 원 — 회색 바탕 위에 캐릭터가 떠 보이게 하는 장치다.
+            Box(contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
+                )
+                Image(
+                    painterResource(R.drawable.ic_avamon_mascot),
+                    contentDescription = null,
+                    modifier = Modifier.size(156.dp),
+                )
+            }
+
+            Spacer(Modifier.height(36.dp))
+
             Text(
                 "Avamon",
                 style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
-                "여러 채널의 신호를 모아\n당신을 지켜주는 스마트 경고",
+                "통화 · 문자 · 카카오톡의 신호를 모아\n보이스피싱을 먼저 알려드려요",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(Modifier.height(44.dp))
+            Spacer(Modifier.height(56.dp))
 
-            // 마스코트 뒤의 옅은 원 — 시트에서 캐릭터를 띄워 보이게 하는 장치다.
-            Box(contentAlignment = Alignment.Center) {
-                Box(
-                    modifier = Modifier
-                        .size(220.dp)
-                        .background(
-                            MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.22f),
-                            CircleShape,
-                        ),
-                )
-                Image(
-                    painterResource(R.drawable.ic_avamon_mascot),
-                    contentDescription = null,
-                    modifier = Modifier.size(180.dp),
-                )
-            }
-
-            Spacer(Modifier.height(48.dp))
-
-            // 기본 LinearProgressIndicator 를 쓰지 않는다 — 모서리와 두께가 시트의 막대와
-            // 달라서, 목업으로 나란히 놓으면 이 한 줄만 다른 앱처럼 보인다.
+            // 기본 LinearProgressIndicator 를 쓰지 않는다 — 모서리와 두께가 여기 막대와 달라
+            // 이 한 줄만 다른 앱처럼 보인다.
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceContainerHighest,
-                        RoundedCornerShape(50),
-                    ),
+                    .width(160.dp)
+                    .height(4.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, PillShape),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(progress)
-                        .height(6.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            RoundedCornerShape(50),
-                        ),
+                        .height(4.dp)
+                        .background(MaterialTheme.colorScheme.primary, PillShape),
                 )
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
                 STAGES[step].first,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.outline,
             )
         }
-
     }
 }

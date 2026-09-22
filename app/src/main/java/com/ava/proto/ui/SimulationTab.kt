@@ -2,15 +2,12 @@ package com.ava.proto.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -20,6 +17,10 @@ import com.ava.proto.capture.Channel
 /**
  * 데모와 오탐 검증을 한 탭에 묶었다. 둘 다 "신호를 일부러 만들어 파이프라인을 통과시키는"
  * 같은 성격이고, 실행 중에는 서로를 막아야 해서(enabled 조건 공유) 떨어뜨리면 상태가 꼬인다.
+ *
+ * 버튼 동사는 섹션 안에서 하나다 — 데모는 전부 `실행`, 순환은 전부 `시작`. 통화만 `분석`이던
+ * 때는 왜 그것만 다른지 화면에서 설명되지 않았다. 설명문은 한 줄로 끝낸다. 두 줄로 감기면
+ * `카카오톡으로 도 / 착한` 같은 자리에서 줄이 꺾인다.
  */
 @Composable
 fun SimulationTab(
@@ -43,47 +44,43 @@ fun SimulationTab(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(26.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        ScreenTitle("시뮬레이션", "피싱 신호를 직접 발생시켜 탐지 동작을 확인합니다.")
+        PageHeader("시뮬레이션")
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionHeader("채널별 데모")
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionHeader("채널 데모")
             CleanCard {
-                Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                Column(modifier = Modifier.padding(vertical = 5.dp)) {
                     SimulationRow(
                         icon = channelIcon(Channel.KAKAO),
                         tint = channelColor(Channel.KAKAO),
                         title = "카카오톡 피싱",
-                        description = "기관 사칭 메시지가 카카오톡으로 도착한 상황을 재현합니다.",
+                        description = "기관 사칭 메시지 수신을 재현",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoKakao,
                     )
-                    RowDivider()
                     SimulationRow(
                         icon = channelIcon(Channel.SMS),
                         tint = channelColor(Channel.SMS),
-                        title = "SMS 피싱",
-                        description = "카카오톡 데모 직후 실행하면 같은 사건으로 묶입니다.",
+                        title = "문자 피싱",
+                        description = "직전 카카오톡과 같은 사건으로 묶임",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoSms,
                     )
-                    RowDivider()
                     SimulationRow(
                         icon = channelIcon(Channel.CALL),
                         tint = channelColor(Channel.CALL),
-                        title = "통화 내용",
-                        description = "녹음 폴더에 넣어둔 통화 텍스트(.txt)를 지금 분석합니다.",
+                        title = "통화 전사본 분석",
+                        description = "녹음 폴더의 .txt를 다시 판정",
                         enabled = idle,
                         onRun = onDemoCall,
-                        runLabel = "분석",
                     )
-                    RowDivider()
                     SimulationRow(
                         icon = channelIcon(Channel.SMS),
                         tint = channelColor(Channel.SMS),
                         title = "카드배달 후속 문자",
-                        description = "통화 분석 직후 실행하면 두 조각이 한 사건으로 묶입니다.",
+                        description = "통화 분석 직후면 한 사건으로 묶임",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoCardFollowUp,
                     )
@@ -92,44 +89,36 @@ fun SimulationTab(
 
             when (callDemoStep) {
                 CallDemoStep.ANALYZING -> ProgressPanel(
-                    text = "AI가 통화 내용을 분석 중... (파일당 수십 초 소요)",
-                    emphasize = true,
+                    text = "통화 내용을 분석하고 있어요 · 파일당 수십 초",
                     onCancel = onCancelCallDemo,
                 )
                 CallDemoStep.IDLE -> {}
             }
 
             if (callDemoResult == CallDemoResult.NO_FOLDER) {
-                ErrorBanner("녹음 폴더가 연결되지 않았습니다. 설정 탭에서 폴더를 먼저 연결해주세요.")
+                ErrorBanner("녹음 폴더가 연결되지 않았어요. 설정 탭에서 폴더를 먼저 연결해주세요.")
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionHeader("오탐 검증")
-            Text(
-                "정상 메시지와 피싱 메시지를 번갈아 발송해 오탐·미탐을 확인합니다.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
             if (!autoTestRunning) {
                 CleanCard {
-                    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                    Column(modifier = Modifier.padding(vertical = 5.dp)) {
                         SimulationRow(
                             icon = Icons.Filled.Refresh,
                             tint = channelColor(Channel.KAKAO),
                             title = "카카오톡 순환",
-                            description = "정상 ↔ 피싱 카카오톡 메시지를 번갈아 발송합니다.",
+                            description = "정상 ↔ 피싱 메시지를 번갈아 발송",
                             enabled = !isBusy && !callBusy,
                             runLabel = "시작",
                             onRun = onStartAutoTestKakao,
                         )
-                        RowDivider()
                         SimulationRow(
                             icon = Icons.Filled.Refresh,
                             tint = channelColor(Channel.SMS),
-                            title = "SMS 순환",
-                            description = "정상 ↔ 피싱 문자를 번갈아 발송합니다.",
+                            title = "문자 순환",
+                            description = "정상 ↔ 피싱 문자를 번갈아 발송",
                             enabled = !isBusy && !callBusy,
                             runLabel = "시작",
                             onRun = onStartAutoTestSms,
@@ -137,8 +126,14 @@ fun SimulationTab(
                     }
                 }
             } else {
-                ProgressPanel(text = autoTestStatus, emphasize = true, onCancel = onStopAutoTest)
+                ProgressPanel(text = autoTestStatus, onCancel = onStopAutoTest)
             }
+            Text(
+                "정상과 피싱을 번갈아 보내 오탐·미탐을 확인합니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
         }
     }
 }
@@ -153,26 +148,10 @@ private fun SimulationRow(
     onRun: () -> Unit,
     runLabel: String = "실행",
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconBubble(icon, tint)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        OutlinedPillButton(text = runLabel, enabled = enabled, onClick = onRun)
-    }
+    ListRow(
+        title = title,
+        subtitle = description,
+        leading = { IconBubble(icon, tint) },
+        trailing = { CompactButton(runLabel, enabled = enabled, onClick = onRun) },
+    )
 }

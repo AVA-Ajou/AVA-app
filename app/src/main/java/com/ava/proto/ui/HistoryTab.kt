@@ -1,8 +1,8 @@
 package com.ava.proto.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,27 +10,28 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ava.proto.capture.Channel
 import com.ava.proto.data.EventEntity
 import com.ava.proto.data.RiskSignal
 import java.time.Instant
@@ -39,101 +40,81 @@ import java.time.format.DateTimeFormatter
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 
+/** 본문을 접어둘 때 보이는 줄 수. 통화 전사본은 여덟 줄이 넘어가 카드 하나가 화면을 다 먹었다. */
+private const val COLLAPSED_LINES = 3
+
 @Composable
 fun HistoryTab(
     events: List<EventEntity>,
     escalatedSessionIds: Set<Long>,
     modifier: Modifier = Modifier,
 ) {
-    // 아래 카드가 붙이는 배지와 같은 갈래로 센다. 둘을 한 숫자에 뭉치면 규칙이 뒷받침한
+    // 아래 카드가 붙이는 칩과 같은 갈래로 센다. 둘을 한 숫자에 뭉치면 규칙이 뒷받침한
     // 경보와 모델만 본 `경보우려`가 섞여, 요약과 카드가 서로 다른 말을 한다.
     val riskyCount = events.count { it.riskSignal == RiskSignal.HIGH }
     val unbackedCount = events.count { it.riskSignal == RiskSignal.HIGH_UNBACKED }
     val cautionCount = events.count { it.riskSignal == RiskSignal.CAUTION }
     val forecastCount = events.count { it.riskSignal == RiskSignal.FORECAST }
 
-    // 등급 안내는 접어둔다. 배지 이름만으로 순서(예보 < 주의보 < 경보우려 < 경보)를 알 수
+    // 등급 안내는 접어둔다. 칩 이름만으로 순서(예보 < 주의보 < 경보우려 < 경보)를 알 수
     // 없다는 것이 이 버튼을 만든 이유인데, 그렇다고 다섯 줄짜리 설명을 늘 펴두면 정작
     // 목록이 아래로 밀린다. 알고 싶을 때만 열게 한다.
     var guideOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            ScreenTitle("기록", "캡처된 연락과 분류 결과입니다.", modifier = Modifier.weight(1f))
+        PageHeader("기록") {
             GuideToggle(open = guideOpen, onToggle = { guideOpen = !guideOpen })
         }
 
         if (guideOpen) TierGuide()
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatusBadge(
-                "전체 ${events.size}",
-                content = MaterialTheme.colorScheme.primary,
-                container = MaterialTheme.colorScheme.surfaceContainerHigh,
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+        ) {
+            Chip("전체 ${events.size}", MaterialTheme.colorScheme.onSurfaceVariant)
             // 사건 수가 아니라 **다채널로 격상된 사건 수**다. 이벤트 건수와 따로 세는 이유는
             // 두 숫자가 다른 것을 재기 때문이다 — 이벤트는 몇 건이 들어왔나이고, 이쪽은
             // 몇 번의 시도가 경로를 갈아타며 이어졌나다.
             if (escalatedSessionIds.isNotEmpty()) {
-                StatusBadge(
-                    "다채널 ${escalatedSessionIds.size}",
-                    content = MaterialTheme.colorScheme.error,
-                    container = MaterialTheme.colorScheme.errorContainer,
-                )
+                Chip("다채널 ${escalatedSessionIds.size}", MaterialTheme.colorScheme.error, strong = true)
             }
-            StatusBadge(
-                "경보 $riskyCount",
-                content = MaterialTheme.colorScheme.error,
-                container = MaterialTheme.colorScheme.errorContainer,
-            )
+            // 경보는 0이어도 남긴다 — 이 화면이 무엇을 세는 화면인지 알리는 기준점이다.
             // 아래 세 칩은 0이면 접는다. 등급을 늘 다 띄우면 대부분의 화면이 `0`을 세 개 달고
             // 있게 되고, 실제로 뭔가 잡힌 날의 숫자가 그만큼 덜 보인다.
-            // 경보는 0이어도 남긴다 — 이 화면이 무엇을 세는 화면인지 알리는 기준점이다.
-            if (unbackedCount > 0) {
-                StatusBadge(
-                    "경보우려 $unbackedCount",
-                    content = caution,
-                    container = caution.copy(alpha = 0.15f),
-                )
-            }
+            Chip("경보 $riskyCount", MaterialTheme.colorScheme.error)
+            if (unbackedCount > 0) Chip("경보우려 $unbackedCount", caution)
             // 주의보를 경보 쪽에 합쳐 세지 않는다. 두 등급은 근거가 다르고(모델 단독 /
-            // 두 판정기의 교집합) 합치면 어느 쪽이 늘었는지 안 보인다 — 학습셋을 보강했을 때
-            // 볼 값이 이것이다.
-            if (cautionCount > 0) {
-                StatusBadge(
-                    "주의보 $cautionCount",
-                    content = caution,
-                    container = caution.copy(alpha = 0.15f),
-                )
-            }
+            // 두 판정기의 교집합) 합치면 어느 쪽이 늘었는지 안 보인다.
+            if (cautionCount > 0) Chip("주의보 $cautionCount", caution)
             // 예보를 정상 쪽으로 밀어 세지 않는다. 이 숫자가 크다는 것은 모델이 애매해한
             // 통화가 그만큼 많았다는 뜻이고, 학습셋을 보강할 자리를 가리키는 값이 이것이다.
-            if (forecastCount > 0) {
-                StatusBadge(
-                    "예보 $forecastCount",
-                    content = forecast,
-                    container = forecast.copy(alpha = 0.15f),
-                )
-            }
+            if (forecastCount > 0) Chip("예보 $forecastCount", forecast)
         }
 
         if (events.isEmpty()) {
             CleanCard {
-                Text(
-                    "아직 수신된 연락이 없습니다.\n시뮬레이션 탭에서 신호를 발생시켜 보세요.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(24.dp),
-                )
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        "아직 기록이 없어요",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        "시뮬레이션 탭에서 신호를 만들어볼 수 있어요",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
+
         // 딱지는 **합류한 쪽에만** 붙인다. 세션을 연 첫 연락은 그때까지 채널이 하나뿐이라
         // 다채널이 아니었고, 뒤이어 다른 경로로 들어온 연락이 사건을 다채널로 만든다.
         // 둘 다 붙이면 "처음부터 다채널이었다"로 읽혀, 단독으로는 확정되지 않았다는
@@ -156,27 +137,27 @@ private fun GuideToggle(open: Boolean, onToggle: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(PillShape)
             .clickable(onClick = onToggle)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(start = 10.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
     ) {
         Icon(
             Icons.Filled.Info,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(15.dp),
         )
         Text(
-            "등급 설명",
+            "등급 안내",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
         Icon(
             if (open) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
             contentDescription = if (open) "접기" else "펼치기",
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(16.dp),
         )
     }
@@ -184,87 +165,65 @@ private fun GuideToggle(open: Boolean, onToggle: () -> Unit) {
 
 /**
  * 다섯 등급을 센 것부터 약한 것 순으로 늘어놓는 안내. 사용자가 이 카드를 여는 때는 방금 본
- * 배지가 무엇인지 궁금할 때이고, 그 배지는 대개 위쪽 등급이다.
+ * 칩이 무엇인지 궁금할 때이고, 그 칩은 대개 위쪽 등급이다.
  *
  * **위험도 숫자도 진행 단계도 적지 않는다.** 화면 어디에도 내보내지 않기로 한 값을 안내에만
- * 적으면, 사용자가 배지에서 찾을 수 없는 기준을 머릿속에 들고 목록을 보게 된다. 대신 각
+ * 적으면, 사용자가 칩에서 찾을 수 없는 기준을 머릿속에 들고 목록을 보게 된다. 대신 각
  * 등급이 무엇을 근거로 켜졌는지를 적는다 — 그것이 등급 사이의 실제 차이다.
  */
 @Composable
 private fun TierGuide() {
     CleanCard {
         Column(
-            modifier = Modifier.padding(18.dp),
+            modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                "판정 등급",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                "AVA는 통화 내용을 두 갈래로 봅니다. " +
-                    "학습된 모델이 매기는 위험도와 사기 진행 문형을 찾는 규칙입니다. " +
-                    "둘 중 몇 개가 위험하다고 봤는지에 따라 아래 다섯 등급이 갈립니다.",
+                "Avamon은 연락을 두 갈래로 봅니다. 학습된 모델이 매기는 위험도와 사기 진행 문형을 " +
+                    "찾는 규칙입니다. 둘 중 몇 개가 위험하다고 봤는지에 따라 등급이 갈립니다.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TierRow(
-                color = MaterialTheme.colorScheme.error,
-                name = "경보",
-                detail = "둘 다 위험하다고 봤거나, 모델이 혼자서 단정할 만큼 높습니다.",
-            )
-            TierRow(
-                color = caution,
-                name = "경보우려",
-                detail = "모델만 위험하다고 보고 있으며, 뚜렷한 규칙은 나타나지 않습니다.",
-            )
-            TierRow(
-                color = caution,
-                name = "주의보",
-                detail = "모델이 일부 우려를 나타내고 있으며, 규칙은 위험하다고 봅니다.",
-            )
-            TierRow(
-                color = forecast,
-                name = "예보",
-                detail = "모델이 일부 우려를 나타내고 있으며, 뚜렷한 규칙은 나타나지 않습니다.",
-            )
-            TierRow(
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                name = "정상",
-                detail = "위험 신호가 없습니다.",
-            )
+            TierRow(RiskSignal.HIGH, "둘 다 위험하다고 봤거나, 모델이 혼자서 단정할 만큼 높습니다.")
+            TierRow(RiskSignal.HIGH_UNBACKED, "모델만 위험하다고 보고, 뚜렷한 사기 문형은 없습니다.")
+            TierRow(RiskSignal.CAUTION, "모델은 일부 우려를 보이고, 규칙이 사기 문형을 찾았습니다.")
+            TierRow(RiskSignal.FORECAST, "모델이 일부 우려를 보이지만, 뚜렷한 문형은 없습니다.")
+            TierRow(RiskSignal.NONE, "위험 신호가 없습니다.")
         }
     }
 }
 
 @Composable
-private fun TierRow(color: Color, name: String, detail: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        // 색 점을 첫 줄 높이에 맞춰 띄운다. 세로 가운데에 두면 설명이 두 줄일 때 등급 이름과
-        // 어긋나 어느 줄에 붙은 점인지 흐려진다.
-        Box(
+private fun TierRow(signal: RiskSignal, detail: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // 칩을 실제 카드에 붙는 것과 같은 모양으로 그린다 — 안내에서 본 것을 목록에서
+        // 그대로 찾을 수 있어야 한다. 칸 폭을 고정하는 것은 `경보우려`와 `예보`의 폭 차이로
+        // 설명 줄의 시작점이 들쭉날쭉해지지 않게 하기 위해서다.
+        Box(modifier = Modifier.width(76.dp)) { TierChip(signal) }
+        Text(
+            detail,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
-                .padding(top = 5.dp)
-                .size(10.dp)
-                .background(color, CircleShape),
+                .weight(1f)
+                .padding(top = 3.dp),
         )
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                name,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = color,
-            )
-            Text(
-                detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 
+/**
+ * 기록 한 건.
+ *
+ * **등급 칩은 맨 위 오른쪽이다.** 카드에서 가장 중요한 정보인데 예전에는 본문 아래에 있어,
+ * 통화 전사본처럼 본문이 긴 카드에서는 스크롤 밖으로 밀렸다.
+ *
+ * 제목은 상대방이다. 발신처를 모르는 통화만 채널 이름이 제목이 되고, 그 경우 파일명을 부제에
+ * 적어 어느 녹음인지 알 수 있게 한다. 문자·카카오톡의 `sourceLabel` 은 **패키지명**이라
+ * 화면에 내지 않는다 — 사용자가 볼 화면에 `com.…` 식별자가 나오면 미완성으로 읽힌다.
+ */
 @Composable
 internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
     CleanCard {
@@ -278,142 +237,84 @@ internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconBubble(channelIcon(event.channel), channelColor(event.channel), size = 40)
-                Column(modifier = Modifier.weight(1f)) {
-                    // 딱지는 채널 이름 옆에 붙인다. 이 카드가 **혼자가 아니라는 것**을
-                    // 알려주는 표시라, 판정 배지(아래)와 섞이면 등급으로 읽힌다.
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            event.channel.label,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        if (multiChannel) {
-                            StatusBadge(
-                                "다채널",
-                                content = MaterialTheme.colorScheme.error,
-                                container = MaterialTheme.colorScheme.errorContainer,
-                            )
-                        }
-                    }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        event.sourceLabel,
-                        style = MaterialTheme.typography.labelSmall,
+                        event.counterpart ?: event.channel.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        buildString {
+                            append(event.channel.label)
+                            append(" · ")
+                            append(formatTime(event.capturedAt))
+                            if (event.channel == Channel.CALL) {
+                                append(" · ")
+                                append(event.sourceLabel)
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
-                    formatTime(event.capturedAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // 다채널 딱지는 등급 칩 옆이다. 이 카드가 **혼자가 아니라는 것**을 알려주는
+                // 표시라 등급과 나란히 읽혀야 하되, 채워진 색으로 그려 등급과 구분한다.
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (multiChannel) Chip("다채널", MaterialTheme.colorScheme.error, strong = true)
+                    // 정상은 칩을 달지 않는다 — 배지가 없는 것이 곧 "볼 것 없음"이다.
+                    if (event.riskSignal != RiskSignal.NONE) TierChip(event.riskSignal)
+                }
             }
 
-            // 본문은 연보라 판 위에 올린다. 흰 카드에 그대로 두면 목업 크기에서 글자 벽으로만
-            // 보이고, 판을 깔면 "받은 내용"과 "우리 판정"이 시각적으로 갈린다.
+            // 본문은 회색 판 위에 올린다. 흰 카드에 그대로 두면 글자 벽으로만 보이고,
+            // 판을 깔면 "받은 내용"과 "우리 판정"이 시각적으로 갈린다.
             SoftBlock {
-                Text(
-                    event.text ?: "(음성 변환 대기 중)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(14.dp),
+                ExpandableText(
+                    text = event.text ?: "음성 변환 대기 중",
+                    key = event.id,
                 )
-            }
-
-            // **화면에 나가는 것은 등급 이름 하나뿐이다.** 위험도 숫자도, 진행 단계도,
-            // 근거 문장도 내지 않는다.
-            //
-            //   위험도    값이 사실상 0 아니면 100으로 갈려 "위험도 100.0"이 "피싱임"과
-            //             같은 말이 된다. 숫자를 보여줄 이유가 없다
-            //   단계      **등급을 가르는 재료로만 쓴다.** 규칙이 정답지 36건에서 91.7%로
-            //             맞히지만 그건 "단계가 있다/없다"를 가르는 정확도지, 1단계인지
-            //             2단계인지까지 맞다는 뜻이 아니다. 틀린 단계를 띄우면 사용자가
-            //             "아직 2단계니까 괜찮다"고 읽는다 — 등급만 내보내면 그 오독이 없다
-            //   근거 문장  모델이 인용은 정확히 하지만 **가장 결정적인 문구를 못 고른다** —
-            //             계좌번호를 부르는 대목 대신 "통화가 녹취됩니다"를 뽑아오는 것을
-            //             두 번 확인했다
-            //
-            // 셋 다 지우는 게 아니라 화면에서만 뺀 것이라 EventEntity 와 로그에는 남는다.
-            //
-            // **색은 켜진 판정기의 수를 뜻한다.** 빨강은 둘 다, 주황은 한쪽만, 노랑은 어느
-            // 쪽도 위험하다고 하지 않았다는 뜻이다. 등급 이름을 함께 쓰는 이유는 색을 못
-            // 가리는 눈에는 배지가 전부 같은 모양이기 때문이다.
-            //
-            //   경보(빨강)   위험도 80 이상 또는 50 이상+단계 — 단정할 만하다
-            //   경보우려(주황) 위험도 50~80 + 단계 없음        — 모델만 봤다
-            //   주의보(주황) 위험도 20~50 + 단계 있음         — 규칙만 봤다
-            //   예보(노랑)   위험도 20~50 + 단계 없음         — 어느 쪽도 확신하지 않았다
-            //
-            // 주의보와 경보우려가 같은 주황인데도 이름을 갈라두는 이유는 원인이 정반대라서다.
-            // 로그를 되짚을 때 어느 판정기가 켰는지 모르면 오판을 못 쫓아간다.
-            //
-            // **등급 판단을 여기서 다시 하지 않는다.** 위험도 문턱은 전부
-            // `BackendClassificationClient` 에 있고, 이 화면은 [RiskSignal]에 이름과 색만 붙인다.
-            if (event.riskSignal != RiskSignal.NONE) {
-                val alert = event.riskSignal == RiskSignal.HIGH
-                val unbacked = event.riskSignal == RiskSignal.HIGH_UNBACKED
-                val watch = event.riskSignal == RiskSignal.FORECAST
-                val tint = when {
-                    alert -> MaterialTheme.colorScheme.error
-                    watch -> forecast
-                    else -> caution
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .border(1.dp, tint, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Warning,
-                        contentDescription = null,
-                        tint = tint,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        when {
-                            // `경보우려`로 낮춰 부르는 이유 — 모델만 위험하다고 본 상태라
-                            // 규칙이 뒷받침하지 않는다. 알림은 경보와 똑같이 나가되(진짜
-                            // 피싱의 19%가 여기 있다) 말로는 단정하지 않는다.
-                            watch -> "예보"
-                            unbacked -> "경보우려"
-                            alert -> "경보"
-                            else -> "주의보"
-                        },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = tint,
-                    )
-                }
             }
         }
     }
 }
 
+/**
+ * 세 줄을 넘는 본문은 접고 `더보기`로 편다. 펼침 상태는 이벤트 id 로 기억해 목록이
+ * 갱신돼도 읽던 카드가 다시 접히지 않는다.
+ */
 @Composable
-private fun StageBadge(tint: Color, text: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .background(tint.copy(alpha = 0.12f), PillShape)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+private fun ExpandableText(text: String, key: Long) {
+    var expanded by rememberSaveable(key) { mutableStateOf(false) }
+    var overflows by remember(key) { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(
-            Icons.Filled.Warning,
-            contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(17.dp),
-        )
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = tint,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_LINES,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { if (!expanded) overflows = it.hasVisualOverflow },
         )
+        if (overflows || expanded) {
+            Text(
+                if (expanded) "접기" else "더보기",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clip(PillShape)
+                    .clickable { expanded = !expanded }
+                    .padding(vertical = 2.dp),
+            )
+        }
     }
 }
 

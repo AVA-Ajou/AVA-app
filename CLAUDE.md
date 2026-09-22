@@ -61,7 +61,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   **지우는 게 아니라 화면에서만 뺀 것이다** — `EventEntity`와 `BackendClassification`
   로그에는 그대로 남는다. 경계선 오탐(정상 통화 59.8점 같은 값)은 숫자로만 보이기 때문에
   개발 중에는 볼 수 있어야 한다.
-  등급 이름만으로는 순서를 알 수 없으므로 기록 탭의 **`등급 설명` 버튼**이 다섯 등급을
+  등급 이름만으로는 순서를 알 수 없으므로 기록 탭의 **`등급 안내` 버튼**이 다섯 등급을
   펼쳐 보여준다(`HistoryTab.TierGuide`). 여기에도 숫자와 단계는 적지 않는다.
 - **세션 시간 창은 `capturedAt`(발생 시각)으로 계산한다.** `now()`를 쓰면 STT 때문에 최대 15분
   지연되는 통화 채널이 같은 시각대의 다른 채널과 엮이지 못한다.
@@ -98,7 +98,7 @@ app/src/main/java/com/ava/proto/
 ├── notification/AlertNotifier.kt    # SUSPECTED / ESCALATED 시스템 알림
 ├── data/                            # Room (events, sessions), 파괴적 마이그레이션
 ├── demo/DemoInjector.kt             # 자가 알림으로 실제 경로 재현 (카톡·SMS)
-└── ui/                              # HomeScreen(단일 화면) + HomeViewModel
+└── ui/                              # HomeScreen(탭 셸) + 4탭 + UiKit(공용 규격) + HomeViewModel
 ```
 
 `DetectionPipeline`이 유일한 조립 지점이다. 캡처 계층은 이 클래스만 알고 분류가 누구인지 모르며,
