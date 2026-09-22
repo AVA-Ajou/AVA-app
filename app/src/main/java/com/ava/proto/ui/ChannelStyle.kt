@@ -54,8 +54,8 @@ internal fun channelColor(channel: Channel): Color {
 }
 
 /**
- * 통화·문자는 [AppIcons](Material Symbols Rounded), 카카오톡만 직접 그린 말풍선이다
- * (`ic_channel_kakao.xml`). 카카오톡을 알아보게 하는 것은 왼쪽 아래로 흐르는 꼬리가 달린
+ * 세 채널 모두 직접 그린 글리프다(`ic_glyph_call` · `ic_glyph_sms` · `ic_channel_kakao`).
+ * 기호 세트의 수화기·말풍선은 획이 얇고 각져서 통통한 타일 위에서 빈약해 보였다. 카카오톡을 알아보게 하는 것은 왼쪽 아래로 흐르는 꼬리가 달린
  * 둥근 말풍선 실루엣이라 기호 세트의 말풍선으로는 대신할 수 없다.
  *
  * 문자에 편지봉투를 쓰지 않는다 — 봉투는 이메일이고, 문자는 말풍선이다. 두 말풍선을
@@ -63,8 +63,8 @@ internal fun channelColor(channel: Channel): Color {
  */
 @Composable
 internal fun channelIcon(channel: Channel): ImageVector = when (channel) {
-    Channel.CALL -> AppIcons.call
-    Channel.SMS -> AppIcons.sms
+    Channel.CALL -> ImageVector.vectorResource(R.drawable.ic_glyph_call)
+    Channel.SMS -> ImageVector.vectorResource(R.drawable.ic_glyph_sms)
     Channel.KAKAO -> ImageVector.vectorResource(R.drawable.ic_channel_kakao)
 }
 
@@ -111,7 +111,7 @@ internal fun ChannelTile(channel: Channel, size: Int = 44, active: Boolean = tru
             channelIcon(channel),
             contentDescription = channel.label,
             tint = glyph,
-            modifier = Modifier.size((size * 0.5f).dp),
+            modifier = Modifier.size((size * 0.55f).dp),
         )
     }
 }
