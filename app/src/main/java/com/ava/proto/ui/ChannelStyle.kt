@@ -1,6 +1,15 @@
 package com.ava.proto.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,4 +65,38 @@ internal fun channelIcon(channel: Channel): ImageVector = when (channel) {
     Channel.CALL -> AppIcons.call
     Channel.SMS -> AppIcons.sms
     Channel.KAKAO -> ImageVector.vectorResource(R.drawable.ic_channel_kakao)
+}
+
+/**
+ * 채널을 **앱 아이콘풍 타일**로 그린다 — 노란 사각형에 갈색 말풍선이면 설명 없이 카카오톡이고,
+ * 초록 사각형에 흰 수화기면 전화다. 토스가 은행을 로고 타일로 보여주는 것과 같은 문법이다.
+ *
+ * 옅은 배경에 색 글리프를 얹던 [IconBubble] 방식은 어느 앱에나 있는 목록 아이콘이라
+ * 채널이 "항목"으로만 읽혔다. 타일은 라이트·다크에서 색을 바꾸지 않는다 — 앱 아이콘이
+ * 테마를 따라 변하지 않듯이.
+ *
+ * 카카오의 공식 로고 파일은 쓰지 않는다. 노랑 바탕과 말풍선 실루엣만 빌린다.
+ * 꺼진 채널은 회색 타일이다 — 색 타일은 곧 "감시 중"이라는 뜻이어야 한다.
+ */
+@Composable
+internal fun ChannelTile(channel: Channel, size: Int = 44, active: Boolean = true) {
+    val (tile, glyph) = when {
+        !active -> MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.outline
+        channel == Channel.CALL -> Color(0xFF30C060) to Color(0xFFFFFFFF)
+        channel == Channel.SMS -> Color(0xFF2B6FF0) to Color(0xFFFFFFFF)
+        else -> Color(0xFFFEE500) to Color(0xFF3C1E1E)
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(size.dp)
+            .background(tile, RoundedCornerShape((size * 0.28f).dp)),
+    ) {
+        Icon(
+            channelIcon(channel),
+            contentDescription = channel.label,
+            tint = glyph,
+            modifier = Modifier.size((size * 0.52f).dp),
+        )
+    }
 }

@@ -7,8 +7,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.ava.proto.capture.Channel
 
@@ -51,32 +49,28 @@ fun SimulationTab(
             CleanCard {
                 Column(modifier = Modifier.padding(vertical = 5.dp)) {
                     SimulationRow(
-                        icon = channelIcon(Channel.KAKAO),
-                        tint = channelColor(Channel.KAKAO),
+                        leading = { ChannelTile(Channel.KAKAO) },
                         title = "카카오톡 피싱",
                         description = "기관 사칭 메시지 수신을 재현",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoKakao,
                     )
                     SimulationRow(
-                        icon = channelIcon(Channel.SMS),
-                        tint = channelColor(Channel.SMS),
+                        leading = { ChannelTile(Channel.SMS) },
                         title = "문자 피싱",
                         description = "직전 카카오톡과 같은 사건으로 묶임",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoSms,
                     )
                     SimulationRow(
-                        icon = channelIcon(Channel.CALL),
-                        tint = channelColor(Channel.CALL),
+                        leading = { ChannelTile(Channel.CALL) },
                         title = "통화 전사본 분석",
                         description = "녹음 폴더의 .txt를 다시 판정",
                         enabled = idle,
                         onRun = onDemoCall,
                     )
                     SimulationRow(
-                        icon = channelIcon(Channel.SMS),
-                        tint = channelColor(Channel.SMS),
+                        leading = { ChannelTile(Channel.SMS) },
                         title = "카드배달 후속 문자",
                         description = "통화 분석 직후면 한 사건으로 묶임",
                         enabled = !isBusy && !autoTestRunning,
@@ -104,8 +98,7 @@ fun SimulationTab(
                 CleanCard {
                     Column(modifier = Modifier.padding(vertical = 5.dp)) {
                         SimulationRow(
-                            icon = AppIcons.refresh,
-                            tint = channelColor(Channel.KAKAO),
+                            leading = { IconBubble(AppIcons.refresh, channelColor(Channel.KAKAO)) },
                             title = "카카오톡 순환",
                             description = "정상 ↔ 피싱 메시지를 번갈아 발송",
                             enabled = !isBusy && !callBusy,
@@ -113,8 +106,7 @@ fun SimulationTab(
                             onRun = onStartAutoTestKakao,
                         )
                         SimulationRow(
-                            icon = AppIcons.refresh,
-                            tint = channelColor(Channel.SMS),
+                            leading = { IconBubble(AppIcons.refresh, channelColor(Channel.SMS)) },
                             title = "문자 순환",
                             description = "정상 ↔ 피싱 문자를 번갈아 발송",
                             enabled = !isBusy && !callBusy,
@@ -132,8 +124,7 @@ fun SimulationTab(
 
 @Composable
 private fun SimulationRow(
-    icon: ImageVector,
-    tint: Color,
+    leading: @Composable () -> Unit,
     title: String,
     description: String,
     enabled: Boolean,
@@ -143,7 +134,7 @@ private fun SimulationRow(
     ListRow(
         title = title,
         subtitle = description,
-        leading = { IconBubble(icon, tint) },
+        leading = leading,
         trailing = { CompactButton(runLabel, enabled = enabled, onClick = onRun) },
     )
 }

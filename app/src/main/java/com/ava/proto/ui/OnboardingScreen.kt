@@ -232,7 +232,7 @@ private fun StepBody(
         if (channels.isNotEmpty()) {
             Spacer(Modifier.height(22.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                channels.forEach { IconBubble(channelIcon(it), channelColor(it), size = 40) }
+                channels.forEach { ChannelTile(it, size = 40) }
                 if (status != null) {
                     Spacer(Modifier.width(2.dp))
                     Chip(status, MaterialTheme.colorScheme.tertiary)

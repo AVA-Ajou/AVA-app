@@ -245,7 +245,7 @@ internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconBubble(channelIcon(event.channel), channelColor(event.channel), size = 40)
+                ChannelTile(event.channel, size = 40)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         event.counterpart ?: event.channel.label,

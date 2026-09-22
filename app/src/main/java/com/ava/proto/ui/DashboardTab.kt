@@ -275,13 +275,7 @@ private fun ChannelRow(channel: Channel, active: Boolean, lastSeenAt: Long?, onO
             lastSeenAt == null -> "아직 확인한 연락이 없어요"
             else -> "마지막 확인 ${formatTime(lastSeenAt)}"
         },
-        leading = {
-            IconBubble(
-                channelIcon(channel),
-                // 꺼진 채널까지 채널색으로 칠하면 "감시 중"과 구분이 안 된다.
-                if (active) channelColor(channel) else MaterialTheme.colorScheme.outline,
-            )
-        },
+        leading = { ChannelTile(channel, active = active) },
         trailing = { StatusChip(active, activeText = "감시 중") },
         // 끊긴 채널만 누를 수 있다. 연결된 채널을 눌러 갈 곳이 없다.
         onClick = if (active) null else onOpenSettings,
@@ -319,7 +313,7 @@ private fun ActivityRow(event: EventEntity) {
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 12.dp),
     ) {
-        IconBubble(channelIcon(event.channel), channelColor(event.channel), size = 40)
+        ChannelTile(event.channel, size = 40)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 event.counterpart ?: event.channel.label,

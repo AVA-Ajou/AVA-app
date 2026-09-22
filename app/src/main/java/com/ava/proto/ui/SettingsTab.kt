@@ -46,7 +46,7 @@ fun SettingsTab(
                         subtitle = recordingFolderUri?.lastPathSegment?.substringAfterLast(':')
                             ?: "폴더를 연결하면 감시가 시작돼요",
                         modifier = Modifier.padding(top = 5.dp),
-                        leading = { IconBubble(channelIcon(Channel.CALL), channelColor(Channel.CALL)) },
+                        leading = { ChannelTile(Channel.CALL) },
                         trailing = { StatusChip(recordingFolderUri != null) },
                     )
                     Row(
@@ -83,7 +83,7 @@ fun SettingsTab(
                         title = "문자 · 카카오톡",
                         subtitle = "알림 접근 하나로 두 채널을 감시해요",
                         modifier = Modifier.padding(top = 5.dp),
-                        leading = { IconBubble(channelIcon(Channel.SMS), channelColor(Channel.SMS)) },
+                        leading = { ChannelTile(Channel.SMS) },
                         trailing = { StatusChip(notificationAccessGranted, activeText = "허용됨", inactiveText = "거부됨") },
                     )
                     if (notificationAccessGranted) {
