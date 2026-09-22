@@ -32,7 +32,6 @@ import com.ava.proto.capture.TargetPackages
 import com.ava.proto.ui.HomeScreen
 import com.ava.proto.ui.HomeViewModel
 import com.ava.proto.ui.ProtoTheme
-import com.ava.proto.ui.SplashScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -42,10 +41,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ProtoTheme {
-                // 인트로는 Activity 가 아니라 여기서 상태 하나로 가린다 — 별도 Activity 를
-                // 두면 진입점이 둘이 되고, 알림을 눌러 들어오는 경로에서도 인트로가 끼어든다.
-                var showSplash by rememberSaveable { mutableStateOf(true) }
-
                 val context = LocalContext.current
                 val app = context.applicationContext as ProtoApplication
 
@@ -81,11 +76,6 @@ class MainActivity : ComponentActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
-                }
-
-                if (showSplash) {
-                    SplashScreen(onFinished = { showSplash = false })
-                    return@ProtoTheme
                 }
 
                 HomeScreen(

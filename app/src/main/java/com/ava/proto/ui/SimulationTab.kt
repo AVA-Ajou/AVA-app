@@ -126,12 +126,6 @@ fun SimulationTab(
             } else {
                 ProgressPanel(text = autoTestStatus, onCancel = onStopAutoTest)
             }
-            Text(
-                "정상과 피싱을 번갈아 보내 오탐·미탐을 확인합니다.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
         }
     }
 }

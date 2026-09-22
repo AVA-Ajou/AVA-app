@@ -364,29 +364,30 @@ internal fun ListRow(
     }
 }
 
-/** 카드 안의 이름-값 한 줄. 설정 탭의 정보 항목처럼 값이 한 단어인 자리에 쓴다. */
+/**
+ * 카드 안의 이름-값 항목. 이름 위, 값 아래로 쌓는다.
+ *
+ * 한 줄에 좌우로 놓던 때는 값 길이가 제각각이라("0.1.0" 대 "내부저장소 › Recordings › Call")
+ * 오른쪽 정렬선이 흔들리고 긴 값이 이름을 밀었다. 세로로 쌓으면 왼쪽 정렬선 하나로 끝난다.
+ */
 @Composable
 internal fun KeyValueRow(key: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 18.dp, vertical = 11.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             key,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.width(16.dp))
         Text(
             value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = valueColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }

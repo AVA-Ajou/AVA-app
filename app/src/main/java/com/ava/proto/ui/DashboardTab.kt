@@ -47,7 +47,6 @@ fun DashboardTab(
     events: List<EventEntity>,
     recordingFolderUri: Uri?,
     notificationAccessGranted: Boolean,
-    onScanNow: () -> Unit,
     onViewAllEvents: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -73,10 +72,10 @@ fun DashboardTab(
                 riskyCount = riskyCount,
                 totalCount = recent.size,
                 neverSeen = events.isEmpty(),
-                scanEnabled = recordingFolderUri != null,
-                onScanNow = onScanNow,
+                allConnected = allConnected,
+                onOpenSettings = onOpenSettings,
+                onViewAllEvents = onViewAllEvents,
             )
-            if (!allConnected) SetupBanner(onOpenSettings)
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -84,6 +83,7 @@ fun DashboardTab(
             ChannelCard(
                 callActive = recordingFolderUri != null,
                 messagingActive = notificationAccessGranted,
+                lastSeen = events.groupBy { it.channel }.mapValues { (_, es) -> es.maxOf { it.capturedAt } },
                 onOpenSettings = onOpenSettings,
             )
         }
@@ -157,8 +157,9 @@ private fun StatusHero(
     riskyCount: Int,
     totalCount: Int,
     neverSeen: Boolean,
-    scanEnabled: Boolean,
-    onScanNow: () -> Unit,
+    allConnected: Boolean,
+    onOpenSettings: () -> Unit,
+    onViewAllEvents: () -> Unit,
 ) {
     val safe = riskyCount == 0
     val error = MaterialTheme.colorScheme.error
@@ -219,83 +220,61 @@ private fun StatusHero(
                 )
             }
 
-            if (scanEnabled) {
-                Spacer(Modifier.height(18.dp))
-                TonalButton(
-                    text = "지금 스캔",
-                    icon = AppIcons.refresh,
-                    onClick = onScanNow,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // 히어로의 버튼은 **지금 상태에서 사용자가 해야 할 일** 하나다. 채널이 끊겼으면
+            // 연결이 먼저고, 위험 신호가 있으면 그것을 보는 게 먼저다. 둘 다 아니면 할 일이
+            // 없으므로 버튼도 없다. 예전의 "지금 스캔"은 녹음 폴더를 다시 훑는 개발 동작이라
+            // 일반 사용자는 무엇을 하는지 알 수 없었다 — 설정 탭으로 내렸다.
+            when {
+                !allConnected -> {
+                    Spacer(Modifier.height(18.dp))
+                    PrimaryButton(
+                        text = "채널 연결하기",
+                        onClick = onOpenSettings,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                !safe -> {
+                    Spacer(Modifier.height(18.dp))
+                    PrimaryButton(
+                        text = "위험 신호 보기",
+                        onClick = onViewAllEvents,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }
 }
 
-/** 채널이 하나라도 끊겨 있으면 히어로 바로 아래에서 알린다. 누르면 설정으로 간다. */
 @Composable
-private fun SetupBanner(onOpenSettings: () -> Unit) {
-    CleanCard(onClick = onOpenSettings) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-        ) {
-            IconBubble(AppIcons.settingsFilled, MaterialTheme.colorScheme.primary, size = 40)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    "채널 연결이 필요해요",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    "연결되지 않은 채널은 감시되지 않아요",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(
-                AppIcons.chevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ChannelCard(callActive: Boolean, messagingActive: Boolean, onOpenSettings: () -> Unit) {
+private fun ChannelCard(
+    callActive: Boolean,
+    messagingActive: Boolean,
+    lastSeen: Map<Channel, Long>,
+    onOpenSettings: () -> Unit,
+) {
     CleanCard {
         Column(modifier = Modifier.padding(vertical = 5.dp)) {
-            ChannelRow(
-                channel = Channel.CALL,
-                // 알림 리스너와 달리 통화는 폴더 연결이 전제라 상태 근거가 다르다.
-                status = if (callActive) "녹음 폴더 연결됨" else "설정에서 폴더를 연결하세요",
-                active = callActive,
-                onOpenSettings = onOpenSettings,
-            )
-            ChannelRow(
-                channel = Channel.SMS,
-                status = if (messagingActive) "알림 접근 허용됨" else "알림 접근을 허용하세요",
-                active = messagingActive,
-                onOpenSettings = onOpenSettings,
-            )
-            ChannelRow(
-                channel = Channel.KAKAO,
-                status = if (messagingActive) "알림 접근 허용됨" else "알림 접근을 허용하세요",
-                active = messagingActive,
-                onOpenSettings = onOpenSettings,
-            )
+            ChannelRow(Channel.CALL, callActive, lastSeen[Channel.CALL], onOpenSettings)
+            ChannelRow(Channel.SMS, messagingActive, lastSeen[Channel.SMS], onOpenSettings)
+            ChannelRow(Channel.KAKAO, messagingActive, lastSeen[Channel.KAKAO], onOpenSettings)
         }
     }
 }
 
+/**
+ * 부제는 **마지막으로 확인한 연락 시각**이다. 예전에는 "알림 접근 허용됨"이었는데 오른쪽
+ * 칩(감시 중)과 같은 말이라 한 줄에 같은 정보가 두 번 있었다. 끊긴 채널만 갈 곳을 적는다.
+ */
 @Composable
-private fun ChannelRow(channel: Channel, status: String, active: Boolean, onOpenSettings: () -> Unit) {
+private fun ChannelRow(channel: Channel, active: Boolean, lastSeenAt: Long?, onOpenSettings: () -> Unit) {
     ListRow(
         title = channel.label,
-        subtitle = status,
+        subtitle = when {
+            !active -> "설정에서 연결하세요"
+            lastSeenAt == null -> "아직 확인한 연락이 없어요"
+            else -> "마지막 확인 ${formatTime(lastSeenAt)}"
+        },
         leading = {
             IconBubble(
                 channelIcon(channel),

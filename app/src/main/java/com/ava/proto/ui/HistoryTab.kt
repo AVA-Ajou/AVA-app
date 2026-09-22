@@ -35,11 +35,14 @@ import com.ava.proto.capture.Channel
 import com.ava.proto.data.EventEntity
 import com.ava.proto.data.RiskSignal
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("M월 d일 HH:mm")
+private val dateHeaderFormatter = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN)
 
 /** 본문을 접어둘 때 보이는 줄 수. 통화 전사본은 여덟 줄이 넘어가 카드 하나가 화면을 다 먹었다. */
 private const val COLLAPSED_LINES = 3
@@ -115,7 +118,24 @@ fun HistoryTab(
             .flatMap { group -> group.sortedBy { it.capturedAt }.drop(1) }
             .mapTo(mutableSetOf()) { it.id }
 
-        events.forEach { EventCard(it, multiChannel = it.id in joinedEventIds) }
+        // 날짜로 묶는다. 목록이 평면이면 지난달 기록과 오늘 기록이 같은 무게로 쌓여
+        // "요즘 얼마나 왔나"가 스크롤로만 읽힌다. 헤더는 오늘·어제까지만 말로 쓴다.
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        events.groupBy { Instant.ofEpochMilli(it.capturedAt).atZone(zone).toLocalDate() }
+            .forEach { (date, dayEvents) ->
+                Text(
+                    when (date) {
+                        today -> "오늘"
+                        today.minusDays(1) -> "어제"
+                        else -> date.format(dateHeaderFormatter)
+                    },
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+                )
+                dayEvents.forEach { EventCard(it, multiChannel = it.id in joinedEventIds) }
+            }
     }
 }
 
@@ -318,6 +338,6 @@ private fun ExpandableText(text: String, key: Long) {
  */
 internal fun formatTime(epochMillis: Long): String {
     val at = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault())
-    val today = java.time.LocalDate.now(ZoneId.systemDefault())
+    val today = LocalDate.now(ZoneId.systemDefault())
     return if (at.toLocalDate() == today) at.format(timeFormatter) else at.format(dateTimeFormatter)
 }

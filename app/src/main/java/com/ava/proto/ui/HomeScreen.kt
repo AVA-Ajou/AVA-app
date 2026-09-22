@@ -127,7 +127,6 @@ fun HomeScreen(
                     events = uiState.events,
                     recordingFolderUri = recordingFolderUri,
                     notificationAccessGranted = notificationAccessGranted,
-                    onScanNow = onScanNow,
                     onViewAllEvents = { selectedTab = HomeTab.HISTORY },
                     onOpenSettings = { selectedTab = HomeTab.SETTINGS },
                 )

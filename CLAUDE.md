@@ -73,7 +73,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 app/src/main/java/com/ava/proto/
 ├── ProtoApplication.kt              # 수동 DI 컨테이너 (by lazy 싱글턴), WorkManager 스케줄링
-├── MainActivity.kt                  # Compose 진입점, SAF 폴더 피커, 알림 접근 상태 감시
+├── MainActivity.kt                  # Compose 진입점, SAF 폴더 피커, 알림 접근 상태 감시 (인트로 없음 — 시스템 스플래시만)
 ├── capture/                         # 받아적기만 — 분류를 모른다
 │   ├── NotificationCaptureService.kt  # KAKAO·SMS 공용 NotificationListenerService
 │   ├── CallRecordingWatcher.kt        # FileObserver(inotify) 실시간 감지
