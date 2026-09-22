@@ -61,7 +61,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   **지우는 게 아니라 화면에서만 뺀 것이다** — `EventEntity`와 `BackendClassification`
   로그에는 그대로 남는다. 경계선 오탐(정상 통화 59.8점 같은 값)은 숫자로만 보이기 때문에
   개발 중에는 볼 수 있어야 한다.
-  등급 이름만으로는 순서를 알 수 없으므로 기록 탭의 **`등급 설명` 버튼**이 다섯 등급을
+  등급 이름만으로는 순서를 알 수 없으므로 기록 탭의 **`등급 안내` 버튼**이 다섯 등급을
   펼쳐 보여준다(`HistoryTab.TierGuide`). 여기에도 숫자와 단계는 적지 않는다.
 - **세션 시간 창은 `capturedAt`(발생 시각)으로 계산한다.** `now()`를 쓰면 STT 때문에 최대 15분
   지연되는 통화 채널이 같은 시각대의 다른 채널과 엮이지 못한다.
@@ -73,7 +73,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 app/src/main/java/com/ava/proto/
 ├── ProtoApplication.kt              # 수동 DI 컨테이너 (by lazy 싱글턴), WorkManager 스케줄링
-├── MainActivity.kt                  # Compose 진입점, SAF 폴더 피커, 알림 접근 상태 감시
+├── MainActivity.kt                  # Compose 진입점, SAF 폴더 피커, 알림 접근 상태 감시 (인트로 없음 — 시스템 스플래시만; 첫 실행은 `ui/OnboardingScreen`)
 ├── capture/                         # 받아적기만 — 분류를 모른다
 │   ├── NotificationCaptureService.kt  # KAKAO·SMS 공용 NotificationListenerService
 │   ├── CallRecordingWatcher.kt        # FileObserver(inotify) 실시간 감지
@@ -98,7 +98,7 @@ app/src/main/java/com/ava/proto/
 ├── notification/AlertNotifier.kt    # SUSPECTED / ESCALATED 시스템 알림
 ├── data/                            # Room (events, sessions), 파괴적 마이그레이션
 ├── demo/DemoInjector.kt             # 자가 알림으로 실제 경로 재현 (카톡·SMS)
-└── ui/                              # HomeScreen(단일 화면) + HomeViewModel
+└── ui/                              # HomeScreen(탭 셸) + 4탭 + UiKit(공용 규격) + HomeViewModel
 ```
 
 `DetectionPipeline`이 유일한 조립 지점이다. 캡처 계층은 이 클래스만 알고 분류가 누구인지 모르며,
@@ -280,6 +280,12 @@ adb push 통화녹음_테스트.txt /sdcard/Recordings/
 - `docs/capture-channels.md` — 채널별 캡처 방식, 권한 모델과 배제 근거, 삼성 파일명 패턴, SAF 경로 변환
 - `docs/external-apis.md` — 서버 호출 지점(`/analyze`·`/transcribe`)과 계층별 실패 처리 계약
 - `README.md` — 데모 시연 절차와 기기 설정 안내
+- `res/drawable-nodpi/ic_avamon_*.png` — 마스코트 포즈 15종(팀이 만든 시트에서 잘라낸 투명 PNG).
+  `nodpi` 에 두는 이유는 화면마다 `Modifier.size()` 로 크기를 정하므로 밀도별 스케일이 필요 없어서다.
+  앱이 지금 쓰는 것은 `guard`(홈·안전) · `wave`(홈·첫 실행) · `alert`(홈·위험) · `sleep`(빈 기록) ·
+  `search`(분석 진행) 다섯이고 나머지(`cheer` `curious` `analyze` `monitor` `thinking` `thanks`
+  `idea` `notify` `goodjob` `fighting`)는 새 화면을 위해 넣어뒀다. 벡터로 다시 그리지 말 것 —
+  원본의 3D 질감을 벡터가 따라가지 못해 한 번 되돌렸다
 
 **다른 저장소** — 판정을 실제로 하는 쪽이다. 앱을 고치기 전에 읽을 것.
 

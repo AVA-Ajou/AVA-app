@@ -27,6 +27,15 @@ data class SessionEntity(
     val updatedAt: Long,
     /** 이 시각 이후로는 새 이벤트가 이 세션에 합류하지 못하고 새 세션이 시작된다. */
     val windowExpiresAt: Long,
+    /**
+     * 세션에 든 이벤트 중 가장 이른 발생 시각([EventEntity.capturedAt]).
+     *
+     * [windowExpiresAt] 하나만 있으면 창의 **끝**만 알 수 있어서, 뒤늦게 처리된 과거 이벤트가
+     * 훨씬 나중에 열린 세션에 합류했다 — 8월 17일 통화 전사본을 9월 22일에 재분석하자
+     * 그날 카카오톡이 연 세션에 붙어 "다채널"로 격상됐다. 합류 조건은 양쪽으로 잰다:
+     * 이벤트가 창이 끝나기 전이어야 하고, 이벤트의 창이 세션의 첫 이벤트에 닿아야 한다.
+     */
+    val firstCapturedAt: Long,
     /** [com.ava.proto.data.Converters]가 실제 저장 형식(문자열)과 자동 변환한다 — 호출부는 그냥 Set으로 다룬다. */
     val channelsInvolved: Set<Channel>,
     /**

@@ -30,9 +30,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ava.proto.capture.RecordingFolder
 import com.ava.proto.capture.TargetPackages
 import com.ava.proto.ui.HomeScreen
+import com.ava.proto.ui.OnboardingPrefs
+import com.ava.proto.ui.OnboardingScreen
 import com.ava.proto.ui.HomeViewModel
 import com.ava.proto.ui.ProtoTheme
-import com.ava.proto.ui.SplashScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -42,10 +43,6 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ProtoTheme {
-                // 인트로는 Activity 가 아니라 여기서 상태 하나로 가린다 — 별도 Activity 를
-                // 두면 진입점이 둘이 되고, 알림을 눌러 들어오는 경로에서도 인트로가 끼어든다.
-                var showSplash by rememberSaveable { mutableStateOf(true) }
-
                 val context = LocalContext.current
                 val app = context.applicationContext as ProtoApplication
 
@@ -83,8 +80,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (showSplash) {
-                    SplashScreen(onFinished = { showSplash = false })
+                // 온보딩은 Activity 가 아니라 여기서 상태 하나로 가린다 — 별도 Activity 를
+                // 두면 진입점이 둘이 되고, 알림을 눌러 들어오는 경로에서도 끼어든다.
+                var onboardingDone by remember { mutableStateOf(OnboardingPrefs.isDone(context)) }
+                if (!onboardingDone) {
+                    OnboardingScreen(
+                        notificationAccessGranted = notificationAccessGranted,
+                        recordingFolderUri = folderUri,
+                        onOpenNotificationAccessSettings = {
+                            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        },
+                        onConnectFolder = { folderPicker.launch(null) },
+                        onFinish = {
+                            OnboardingPrefs.markDone(context)
+                            onboardingDone = true
+                        },
+                    )
                     return@ProtoTheme
                 }
 
@@ -105,6 +116,7 @@ class MainActivity : ComponentActivity() {
                     onScanNow = viewModel::scanNow,
                     onDemoKakao = viewModel::demoKakao,
                     onDemoSms = viewModel::demoSms,
+                    onDemoCardFollowUp = viewModel::demoCardDeliveryFollowUp,
                     onDemoCall = viewModel::rescanCallFolder,
                     onCancelCallDemo = viewModel::cancelCallDemo,
                     onStartAutoTestKakao = { viewModel.startAutoTest(isKakao = true) },
