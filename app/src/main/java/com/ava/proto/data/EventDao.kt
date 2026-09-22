@@ -26,6 +26,22 @@ interface EventDao {
     fun observeRecent(): Flow<List<EventEntity>>
 
     /**
+     * 세션 재판정의 재료 — 같은 시간 창 안의 **다른 채널** 연락. 등급을 가리지 않는다.
+     *
+     * 정상(NONE)까지 돌려주는 이유가 이 조회의 존재 이유다. 다채널 사기의 앞 조각은 정상처럼
+     * 꾸며져 단독 판정에서 걸러지는데, 그 조각을 뒤 조각과 이어 붙여야 사기로 읽힌다.
+     */
+    @Query(
+        """
+        SELECT * FROM events
+        WHERE channel != :channel AND text IS NOT NULL
+          AND capturedAt BETWEEN :from AND :to
+        ORDER BY capturedAt
+        """,
+    )
+    suspend fun findOtherChannelsBetween(channel: Channel, from: Long, to: Long): List<EventEntity>
+
+    /**
      * 통화 녹음 폴더 스캔에서 "이미 분석이 끝난 파일"을 걸러내는 데 쓴다. 타임스탬프 워터마크
      * 대신 파일명 자체로 판단한다 — mtime 해상도가 낮은 저장소에서 두 파일이 완전히
      * 같은 수정 시각을 가지면 타임스탬프 비교로는 뒤 파일이 영구히 스킵되기 때문이다.

@@ -63,6 +63,9 @@ interface SessionDao {
     @Query("SELECT * FROM sessions ORDER BY updatedAt DESC LIMIT 50")
     fun observeRecent(): Flow<List<SessionEntity>>
 
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    suspend fun findById(id: Long): SessionEntity?
+
     @Insert
     suspend fun insert(session: SessionEntity): Long
 

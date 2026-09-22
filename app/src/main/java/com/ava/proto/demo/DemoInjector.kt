@@ -129,6 +129,22 @@ class DemoInjector(private val context: Context) {
         )
     }
 
+    /**
+     * 택배 반송 사칭의 **앞 조각**. 협박도 링크도 없어 문장만 보면 흔한 택배 안내다.
+     *
+     * 세션 재판정 시연용이다 — `docs/samples/통화녹음_택배확인.txt`(택배 담당자가 성함·주소·
+     * 생년월일을 묻는 통화, 단독 판정 0.4점)를 녹음 폴더에 넣은 뒤 이 문자를 보내면, 조각
+     * 둘을 이어 붙인 재판정이 세션을 격상시킨다. 조각 각각은 그대로 정상·경보우려로 남는다.
+     */
+    fun injectCourierReturnSms() {
+        postDemoNotification(
+            id = System.currentTimeMillis().toInt(),
+            demoChannel = "SMS",
+            title = "1588-1255",
+            text = "[Web발신] 고객님 택배가 주소 불명으로 보관 중입니다. 확인 부탁드립니다.",
+        )
+    }
+
     /** 오탐 검증용 — 피싱 키워드가 없는 정상 SMS를 순환 발송한다. */
     fun injectSmsNormal() {
         val (title, text) = SMS_NORMAL_MESSAGES[smsNormalIndex % SMS_NORMAL_MESSAGES.size]

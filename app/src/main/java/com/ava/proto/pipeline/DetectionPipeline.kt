@@ -9,6 +9,8 @@ import com.ava.proto.data.EventEntity
 import com.ava.proto.data.EventStatus
 import com.ava.proto.data.RiskSignal
 import com.ava.proto.session.SessionEngine
+import com.ava.proto.session.WINDOW_MILLIS
+import com.ava.proto.capture.Channel
 
 private const val TAG = "DetectionPipeline"
 
@@ -50,7 +52,47 @@ class DetectionPipeline(
             stageLabel = verdict.stageLabel,
         )
 
-        return sessionEngine.ingest(event)
+        val saved = sessionEngine.ingest(event)
+        rescoreWithContext(saved)
+        return saved
+    }
+
+    /**
+     * 세션 재판정 — 같은 창의 다른 채널 조각이 있으면 이어 붙여 한 번 더 묻는다.
+     *
+     * 조각별 판정(위)은 그대로다. 이 단계는 그 위에 얹는 두 번째 질문이고, 실패해도 조각 판정과
+     * 세션은 이미 저장돼 있으므로 조용히 넘어간다. 결합 텍스트의 형식(`[문자] …\n[통화] …`)은
+     * 문자 어댑터 학습셋의 결합 표본과 같다 — `Voice-Detection/src/build_sms_set.py`. 카카오톡도
+     * `[문자]`로 적는다. 학습셋에 그 표기만 있다.
+     *
+     * 문자 어댑터(`task=sms`)로 묻는 이유는 결합 입력을 학습한 쪽이 그쪽이기 때문이다.
+     * [Channel.SMS]를 넘기는 것이 곧 그 어댑터를 고르는 것이다.
+     */
+    private suspend fun rescoreWithContext(event: EventEntity) {
+        val text = event.text ?: return
+        val others = eventDao.findOtherChannelsBetween(
+            event.channel, event.capturedAt - WINDOW_MILLIS, event.capturedAt + WINDOW_MILLIS,
+        ).filter { it.id != event.id }
+        if (others.isEmpty()) return
+
+        val pieces = (others + event).sortedBy { it.capturedAt }
+        val joined = pieces.joinToString("\n") { piece ->
+            val tag = if (piece.channel == Channel.CALL) "통화" else "문자"
+            "[$tag] ${piece.text}"
+        }
+        val verdict = try {
+            classificationClient.classify(joined, Channel.SMS)
+        } catch (e: Exception) {
+            Log.e(TAG, "세션 재판정 실패 — 조각 판정은 그대로 둔다", e)
+            return
+        }
+        val fusedRisk = verdict.risk ?: when (verdict.riskSignal) {
+            // 키워드 대역은 위험도를 주지 않는다. 등급만으로 문턱 위·아래를 정한다.
+            RiskSignal.HIGH, RiskSignal.HIGH_UNBACKED -> 100.0
+            else -> 0.0
+        }
+        val fused = sessionEngine.fuse(pieces, fusedRisk)
+        Log.i(TAG, "세션 재판정 ${pieces.size}조각 → ${"%.1f".format(fusedRisk)} ${if (fused) "격상" else "유지"}")
     }
 
     private suspend fun resolveVerdict(captured: CapturedEvent): Pair<EventStatus, ClassificationVerdict> {

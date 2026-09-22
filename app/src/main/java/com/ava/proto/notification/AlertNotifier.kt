@@ -44,6 +44,15 @@ class AlertNotifier(private val context: Context) {
         )
     }
 
+    /** 조각은 각각 정상에 가까웠는데 이어 보니 사기인 경우. 문구가 그 사실을 말해야 한다. */
+    fun notifyFused(session: SessionEntity, channels: Set<String>) {
+        post(
+            session = session,
+            title = "여러 채널을 합쳐 보니 사기 정황입니다",
+            text = "${channels.joinToString(", ")}으로 이어진 연락이 한 사건으로 확인됐습니다.",
+        )
+    }
+
     private fun post(session: SessionEntity, title: String, text: String) {
         // areNotificationsEnabled() 는 버전 분기 없이도 Android 13+ 런타임 권한과, 그 이전
         // 버전에서 사용자가 시스템 설정으로 앱 알림 자체를 꺼둔 경우를 함께 잡아준다 —

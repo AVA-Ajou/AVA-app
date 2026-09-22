@@ -35,6 +35,11 @@ data class HomeUiState(
      * 사건에 속하는가" 하나뿐이어서다.
      */
     val escalatedSessionIds: Set<Long> = emptySet(),
+    /**
+     * 재판정으로 격상된 세션 id → 결합 위험도. 조각이 각각 정상에 가까운데 이어 보니 사기인
+     * 경우라, 기록 탭이 이 세션의 **조각 전부**에 딱지를 붙이고 결합 점수를 함께 보여준다.
+     */
+    val fusedSessions: Map<Long, Double> = emptyMap(),
 )
 
 /** 통화 전사본 분석의 진행 상태. */
@@ -73,6 +78,9 @@ class HomeViewModel(
             escalatedSessionIds = sessions
                 .filter { it.state == SessionState.ESCALATED }
                 .mapTo(mutableSetOf()) { it.id },
+            fusedSessions = sessions
+                .filter { it.fusedRisk != null }
+                .associate { it.id to it.fusedRisk!! },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
@@ -93,6 +101,8 @@ class HomeViewModel(
     fun demoSms() { demoInjector.injectSms() }
 
     fun demoCardDeliveryFollowUp() { demoInjector.injectCardDeliveryFollowUp() }
+
+    fun demoCourierReturnSms() { demoInjector.injectCourierReturnSms() }
 
     // ── 오탐 검증: 정상 ↔ 피싱 자동 순환 ─────────────────────────────────────
 

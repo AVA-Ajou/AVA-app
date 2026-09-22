@@ -66,6 +66,7 @@ fun HomeScreen(
     onDemoKakao: () -> Unit,
     onDemoSms: () -> Unit,
     onDemoCardFollowUp: () -> Unit,
+    onDemoCourierSms: () -> Unit,
     onDemoCall: () -> Unit,
     onCancelCallDemo: () -> Unit,
     onStartAutoTestKakao: () -> Unit,
@@ -134,6 +135,7 @@ fun HomeScreen(
                 HomeTab.HISTORY -> HistoryTab(
                     events = uiState.events,
                     escalatedSessionIds = uiState.escalatedSessionIds,
+                    fusedSessions = uiState.fusedSessions,
                 )
 
                 HomeTab.SIMULATION -> SimulationTab(
@@ -145,6 +147,7 @@ fun HomeScreen(
                     onDemoKakao = onDemoKakao,
                     onDemoSms = onDemoSms,
                     onDemoCardFollowUp = onDemoCardFollowUp,
+                    onDemoCourierSms = onDemoCourierSms,
                     onDemoCall = onDemoCall,
                     onCancelCallDemo = onCancelCallDemo,
                     onStartAutoTestKakao = onStartAutoTestKakao,

@@ -51,6 +51,7 @@ private const val COLLAPSED_LINES = 3
 fun HistoryTab(
     events: List<EventEntity>,
     escalatedSessionIds: Set<Long>,
+    fusedSessions: Map<Long, Double> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     // 아래 카드가 붙이는 칩과 같은 갈래로 센다. 둘을 한 숫자에 뭉치면 규칙이 뒷받침한
@@ -111,11 +112,16 @@ fun HistoryTab(
         // 다채널이 아니었고, 뒤이어 다른 경로로 들어온 연락이 사건을 다채널로 만든다.
         // 둘 다 붙이면 "처음부터 다채널이었다"로 읽혀, 단독으로는 확정되지 않았다는
         // 이 화면의 요점이 흐려진다.
+        //
+        // **재판정으로 격상된 세션은 예외다.** 그 세션은 조각을 이어 붙여야 사기로 읽히므로
+        // 어느 한 조각이 "합류"한 것이 아니라 둘이 함께 사건이다 — 조각 전부에 붙인다.
+        // 그렇지 않으면 정상으로 남은 앞 조각이 사건과 무관해 보인다.
         val joinedEventIds = events
             .filter { it.sessionId != null && it.sessionId in escalatedSessionIds }
             .groupBy { it.sessionId }
-            .values
-            .flatMap { group -> group.sortedBy { it.capturedAt }.drop(1) }
+            .flatMap { (sessionId, group) ->
+                if (sessionId in fusedSessions) group else group.sortedBy { it.capturedAt }.drop(1)
+            }
             .mapTo(mutableSetOf()) { it.id }
 
         // 날짜로 묶는다. 목록이 평면이면 지난달 기록과 오늘 기록이 같은 무게로 쌓여
@@ -134,7 +140,13 @@ fun HistoryTab(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, top = 6.dp),
                 )
-                dayEvents.forEach { EventCard(it, multiChannel = it.id in joinedEventIds) }
+                dayEvents.forEach {
+                    EventCard(
+                        it,
+                        multiChannel = it.id in joinedEventIds,
+                        fusedRisk = it.sessionId?.let(fusedSessions::get),
+                    )
+                }
             }
     }
 }
@@ -234,7 +246,7 @@ private fun TierRow(signal: RiskSignal, detail: String) {
  * 화면에 내지 않는다 — 사용자가 볼 화면에 `com.…` 식별자가 나오면 미완성으로 읽힌다.
  */
 @Composable
-internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
+internal fun EventCard(event: EventEntity, multiChannel: Boolean = false, fusedRisk: Double? = null) {
     CleanCard {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -290,6 +302,19 @@ internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
                 ExpandableText(
                     text = event.text ?: "음성 변환 대기 중",
                     key = event.id,
+                )
+            }
+
+            // 재판정으로 묶인 사건이면 그 사실을 한 줄로 적는다. 이 카드가 "정상"인데 다채널
+            // 딱지가 붙은 이유가 여기 있다 — 혼자서는 정상이고 이어 보니 사기다.
+            // 위험도 숫자를 화면에 내지 않는 규칙(CLAUDE.md)은 조각의 판정에 대한 것이고,
+            // 결합 점수는 조각과 다른 값이라 그 규칙 밖이다. 그래도 숫자 대신 등급 이름을 쓴다.
+            if (fusedRisk != null) {
+                Text(
+                    "이 연락 하나로는 ${tierLabel(event.riskSignal)}이지만, 같은 시간대의 다른 채널과 " +
+                        "이어 보면 ${if (fusedRisk >= 80) "경보" else "경보우려"} 수준의 사기 정황입니다.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
                 )
             }
         }

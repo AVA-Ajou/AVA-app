@@ -36,6 +36,13 @@ data class SessionEntity(
      * 이벤트가 창이 끝나기 전이어야 하고, 이벤트의 창이 세션의 첫 이벤트에 닿아야 한다.
      */
     val firstCapturedAt: Long,
+    /**
+     * 조각을 이어 붙여 다시 물은 위험도. 세션 재판정이 격상시킨 경우에만 채워진다.
+     *
+     * 조각 각각의 [EventEntity.risk]와 다른 값이다 — 조각은 정상(0.4)이어도 결합은 92 가
+     * 나온다. 이 값이 있으면 "단독으로는 정상이었지만 합쳐 보니 사기"라는 뜻이다.
+     */
+    val fusedRisk: Double? = null,
     /** [com.ava.proto.data.Converters]가 실제 저장 형식(문자열)과 자동 변환한다 — 호출부는 그냥 Set으로 다룬다. */
     val channelsInvolved: Set<Channel>,
     /**

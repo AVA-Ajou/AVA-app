@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity() {
                     onDemoKakao = viewModel::demoKakao,
                     onDemoSms = viewModel::demoSms,
                     onDemoCardFollowUp = viewModel::demoCardDeliveryFollowUp,
+                    onDemoCourierSms = viewModel::demoCourierReturnSms,
                     onDemoCall = viewModel::rescanCallFolder,
                     onCancelCallDemo = viewModel::cancelCallDemo,
                     onStartAutoTestKakao = { viewModel.startAutoTest(isKakao = true) },

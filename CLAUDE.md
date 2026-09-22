@@ -36,6 +36,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   구분해 기록한다. NONE은 "분류해봤더니 무해함"이지 "분류를 못 함"이 아니다.
 - **다채널 격상을 알림 여부의 문으로 쓰지 말 것.** 채널 하나만으로도 `SUSPECTED` + 알림이 나간다.
   다채널은 "얼마나 급한가"를 정하는 강도 조절기다.
+- **세션 재판정은 조각 판정을 덮어쓰지 않는다.** `DetectionPipeline.rescoreWithContext()`가 같은
+  창의 다른 채널 조각을 `[문자] …\n[통화] …` 로 이어 붙여 문자 어댑터에 한 번 더 묻고, 그 결합
+  위험도가 50 을 넘으면 `SessionEngine.fuse()`가 조각 전부를 한 세션에 넣고 ESCALATED 로
+  올린다(`SessionEntity.fusedRisk`). 조각 각각의 `riskSignal`은 그대로다 — 앞 조각은 정상,
+  세션만 다채널. 정상(NONE) 조각도 이 재판정의 재료가 되므로 `EventDao.findOtherChannelsBetween`
+  은 등급을 거르지 않는다. 결합 텍스트 형식은 문자 어댑터 학습셋(`Voice-Detection/src/
+  build_sms_set.py`)의 결합 표본과 같아야 한다 — 바꾸면 어댑터가 본 적 없는 입력이 된다.
 - **서버 주소를 코드나 커밋에 넣지 말 것.** `local.properties` → `buildConfigField` 경로만
   쓴다 (`DETECTION_SERVER_URL`).
 - **통화 음성을 외부로 내보내지 말 것.** 권한을 깎아온 이 프로젝트에서 음성을 제3자 API에
@@ -160,6 +167,11 @@ adb logcat -s DetectionPipeline BackendClassification ServerTranscriber \
 adb push 통화녹음_테스트.txt /sdcard/Recordings/
 # FileObserver 가 0.1초 안에 잡아 즉시 분류로 넘긴다
 ```
+
+**세션 재판정 시연** — `docs/samples/통화녹음_택배확인.txt`(단독 0.4점)를 폴더에 넣고 시뮬레이션
+탭의 `택배 반송 문자`를 누른다. 통화는 정상, 문자는 경보우려로 남은 채 결합 86.7 로 세션이
+격상되고 두 카드 모두 `다채널` 딱지가 붙는다. 서버가 떠 있어야 한다(키워드 대역은 결합 입력을
+못 읽는다).
 
 이미 넣어둔 파일을 **다시 판정**하려면 시뮬레이션 탭의 `통화 전사본 [분석]`을 누른다.
 평소 스캔은 분석이 끝난 파일을 건너뛰지만 이 버튼은 강제로 전부 다시 본다.

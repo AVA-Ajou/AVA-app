@@ -11,7 +11,7 @@ import com.ava.proto.notification.AlertNotifier
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-private const val WINDOW_MILLIS = 10 * 60 * 1000L // 10분
+const val WINDOW_MILLIS = 10 * 60 * 1000L // 10분
 
 /**
  * 다채널 세션 융합의 핵심. 채널 하나에서 위험 신호가 잡히면 그 자체로 이미 사용자에게
@@ -142,5 +142,66 @@ class SessionEngine(
         }
 
         return savedEvent
+    }
+
+    /**
+     * 세션 재판정 — 조각을 이어 붙여 다시 물은 결과로 세션을 격상시킨다.
+     *
+     * [ingest]는 조각 하나씩을 본다. 그래서 정상처럼 꾸민 앞 조각(택배기사가 생년월일을 확인하는
+     * 전화, 0.4점)과 뒤 조각이 같은 창에 있어도, 앞 조각이 [RiskSignal.NONE]이면 세션에 들어오지
+     * 못해 격상이 안 됐다. 실측(2026-09-22, `Detection-Server/src/sms_eval.py`)에서 그 두 조각을
+     * `[문자] …\n[통화] …` 로 이어 붙이면 92점이 나왔다 — 모델은 맥락을 읽을 수 있는데 우리가
+     * 안 주고 있었다.
+     *
+     * 여기서는 [DetectionPipeline]이 이어 붙여 다시 물은 [fusedRisk]를 받아, 문턱을 넘으면
+     * 조각 전부를 한 세션에 넣고 ESCALATED 로 올린다. 조각 각각의 등급은 손대지 않는다 —
+     * 앞 조각은 여전히 정상이고, 세션만 다채널이다. 그것이 정확한 서술이다.
+     *
+     * 문턱 50 은 앱의 `경보우려` 선이다. 결합 점수는 조각 점수보다 높게 나오는 경향이 있어
+     * (정상 결합 2건은 5 이하, 사기 결합 5건은 92 이상) 그 사이 어디든 되지만, 경보 문턱(80)까지
+     * 요구하면 보정된 확률이 낮게 나오는 조합을 놓친다.
+     */
+    suspend fun fuse(pieces: List<EventEntity>, fusedRisk: Double): Boolean = mutex.withLock {
+        if (fusedRisk < FUSE_THRESHOLD || pieces.size < 2) return@withLock false
+        val processedAt = now()
+        val sorted = pieces.sortedBy { it.capturedAt }
+        val channels = sorted.mapTo(mutableSetOf()) { it.channel }
+        if (channels.size < 2) return@withLock false
+
+        // 조각 중 하나가 이미 세션에 있으면 그 세션으로 모은다. 가장 최근 것을 고르는 이유는
+        // 뒤 조각이 방금 [ingest]로 만든 세션이 대개 그것이기 때문이다.
+        val existing = sorted.mapNotNull { it.sessionId }.lastOrNull()?.let { sessionDao.findById(it) }
+        val previousState = existing?.state
+        val base = existing ?: SessionEntity(
+            state = SessionState.SUSPECTED,
+            createdAt = processedAt,
+            updatedAt = processedAt,
+            windowExpiresAt = sorted.last().capturedAt + windowMillis,
+            firstCapturedAt = sorted.first().capturedAt,
+            channelsInvolved = emptySet(),
+        )
+        val session = base.copy(
+            state = SessionState.ESCALATED,
+            updatedAt = processedAt,
+            windowExpiresAt = maxOf(base.windowExpiresAt, sorted.last().capturedAt + windowMillis),
+            firstCapturedAt = minOf(base.firstCapturedAt, sorted.first().capturedAt),
+            channelsInvolved = base.channelsInvolved + channels,
+            counterpart = base.counterpart ?: sorted.firstNotNullOfOrNull { it.counterpart },
+            fusedRisk = fusedRisk,
+        )
+        val sessionId = if (existing == null) sessionDao.insert(session) else {
+            sessionDao.update(session); existing.id
+        }
+        for (piece in sorted) {
+            if (piece.sessionId != sessionId) eventDao.update(piece.copy(sessionId = sessionId))
+        }
+        if (previousState != SessionState.ESCALATED) {
+            alertNotifier.notifyFused(session.copy(id = sessionId), channels.map(Channel::label).toSet())
+        }
+        true
+    }
+
+    private companion object {
+        const val FUSE_THRESHOLD = 50.0
     }
 }

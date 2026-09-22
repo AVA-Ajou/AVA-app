@@ -28,6 +28,7 @@ fun SimulationTab(
     onDemoKakao: () -> Unit,
     onDemoSms: () -> Unit,
     onDemoCardFollowUp: () -> Unit,
+    onDemoCourierSms: () -> Unit,
     onDemoCall: () -> Unit,
     onCancelCallDemo: () -> Unit,
     onStartAutoTestKakao: () -> Unit,
@@ -75,6 +76,13 @@ fun SimulationTab(
                         description = "통화 분석 직후면 한 사건으로 묶임",
                         enabled = !isBusy && !autoTestRunning,
                         onRun = onDemoCardFollowUp,
+                    )
+                    SimulationRow(
+                        leading = { ChannelTile(Channel.SMS) },
+                        title = "택배 반송 문자",
+                        description = "택배확인 통화와 합쳐 보면 사기",
+                        enabled = !isBusy && !autoTestRunning,
+                        onRun = onDemoCourierSms,
                     )
                 }
             }
