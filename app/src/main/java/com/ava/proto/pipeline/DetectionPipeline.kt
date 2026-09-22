@@ -2,6 +2,7 @@ package com.ava.proto.pipeline
 
 import android.util.Log
 import com.ava.proto.capture.CapturedEvent
+import com.ava.proto.capture.Channel
 import com.ava.proto.classification.ClassificationClient
 import com.ava.proto.classification.ClassificationVerdict
 import com.ava.proto.data.EventDao
@@ -30,7 +31,15 @@ class DetectionPipeline(
 
         // 같은 파일을 다시 분석하는 경우 기존 행을 이어받는다. 새 행을 넣으면 재분석할 때마다
         // 이벤트가 쌓여 탐지율 같은 숫자가 부풀려진다. 세션은 그대로 두고 판정만 갱신한다.
-        val existing = eventDao.findBySource(captured.channel, captured.sourceLabel)
+        //
+        // **통화에만 해당한다.** 통화의 sourceLabel 은 파일명이라 "같은 것"을 뜻하지만, 알림의
+        // sourceLabel 은 패키지명이라 카카오톡 메시지가 전부 같은 값이다. 채널을 가리지 않고
+        // 갱신하던 때는 새 문자가 올 때마다 직전 문자 행을 덮어쓰고 그 sessionId 까지 물려받아,
+        // 정상 문자가 직전 피싱 문자의 사기 세션에 앉았다 — 순환 테스트에서 정상이 `다채널`로
+        // 보인 원인이 이것이었다. 기록에도 카톡이 늘 1건만 남았다.
+        val existing = if (captured.channel == Channel.CALL) {
+            eventDao.findBySource(captured.channel, captured.sourceLabel)
+        } else null
 
         val event = EventEntity(
             id = existing?.id ?: 0,
