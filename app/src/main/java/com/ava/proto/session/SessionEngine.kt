@@ -157,12 +157,11 @@ class SessionEngine(
      * 조각 전부를 한 세션에 넣고 ESCALATED 로 올린다. 조각 각각의 등급은 손대지 않는다 —
      * 앞 조각은 여전히 정상이고, 세션만 다채널이다. 그것이 정확한 서술이다.
      *
-     * 문턱 50 은 앱의 `경보우려` 선이다. 결합 점수는 조각 점수보다 높게 나오는 경향이 있어
-     * (정상 결합 2건은 5 이하, 사기 결합 5건은 92 이상) 그 사이 어디든 되지만, 경보 문턱(80)까지
-     * 요구하면 보정된 확률이 낮게 나오는 조합을 놓친다.
+     * 문턱과 "어느 조각을 이을지"는 [DetectionPipeline.rescoreWithContext]가 정한다. 여기서는
+     * 이미 통과한 조각들을 세션으로 묶는 일만 한다.
      */
     suspend fun fuse(pieces: List<EventEntity>, fusedRisk: Double): Boolean = mutex.withLock {
-        if (fusedRisk < FUSE_THRESHOLD || pieces.size < 2) return@withLock false
+        if (pieces.size < 2) return@withLock false
         val processedAt = now()
         val sorted = pieces.sortedBy { it.capturedAt }
         val channels = sorted.mapTo(mutableSetOf()) { it.channel }
@@ -201,7 +200,4 @@ class SessionEngine(
         true
     }
 
-    private companion object {
-        const val FUSE_THRESHOLD = 50.0
-    }
 }

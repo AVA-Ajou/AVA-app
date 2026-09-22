@@ -32,7 +32,15 @@ class DetectionPipeline(
 
         // 같은 파일을 다시 분석하는 경우 기존 행을 이어받는다. 새 행을 넣으면 재분석할 때마다
         // 이벤트가 쌓여 탐지율 같은 숫자가 부풀려진다. 세션은 그대로 두고 판정만 갱신한다.
-        val existing = eventDao.findBySource(captured.channel, captured.sourceLabel)
+        //
+        // **통화에만 해당한다.** 통화의 sourceLabel 은 파일명이라 "같은 것"을 뜻하지만, 알림의
+        // sourceLabel 은 패키지명이라 카카오톡 메시지가 전부 같은 값이다. 채널을 가리지 않고
+        // 갱신하던 때는 새 문자가 올 때마다 직전 문자 행을 덮어쓰고 그 sessionId 까지 물려받아,
+        // 정상 문자가 직전 피싱 문자의 사기 세션에 앉았다 — 순환 테스트에서 정상이 `다채널`로
+        // 보인 원인이 이것이었다. 기록에도 카톡이 늘 1건만 남았다.
+        val existing = if (captured.channel == Channel.CALL) {
+            eventDao.findBySource(captured.channel, captured.sourceLabel)
+        } else null
 
         val event = EventEntity(
             id = existing?.id ?: 0,
@@ -58,21 +66,31 @@ class DetectionPipeline(
     }
 
     /**
-     * 세션 재판정 — 같은 창의 다른 채널 조각이 있으면 이어 붙여 한 번 더 묻는다.
+     * 세션 재판정 — **혼자서는 문턱을 못 넘은 조각들만** 이어 붙여 한 번 더 묻는다.
      *
-     * 조각별 판정(위)은 그대로다. 이 단계는 그 위에 얹는 두 번째 질문이고, 실패해도 조각 판정과
-     * 세션은 이미 저장돼 있으므로 조용히 넘어간다. 결합 텍스트의 형식(`[문자] …\n[통화] …`)은
-     * 문자 어댑터 학습셋의 결합 표본과 같다 — `Voice-Detection/src/build_sms_set.py`. 카카오톡도
-     * `[문자]`로 적는다. 학습셋에 그 표기만 있다.
+     * 처음에는 같은 창의 다른 채널 조각을 전부 이어 붙였다. 그러자 순환 테스트에서 정상 문자가
+     * 앞서 온 피싱 카톡과 결합돼 높은 점수를 받고 그 사기 세션에 끌려 들어갔다 — 결합 점수가
+     * 높았던 이유는 정상 문자가 아니라 카톡이었는데, 그것을 "합쳐 보니 사기"로 읽은 것이다.
      *
-     * 문자 어댑터(`task=sms`)로 묻는 이유는 결합 입력을 학습한 쪽이 그쪽이기 때문이다.
-     * [Channel.SMS]를 넘기는 것이 곧 그 어댑터를 고르는 것이다.
+     * 그래서 조건을 셋으로 좁힌다.
+     *   1. 이번 조각이 단독으로 이미 경보·경보우려면 재판정하지 않는다. 그 격상은 [SessionEngine.ingest]
+     *      가 한다.
+     *   2. 상대 조각도 단독으로 경보·경보우려가 아닌 것만 고른다. 경보 조각과 이으면 결합 점수는
+     *      그 조각의 점수를 되풀이할 뿐이라 새 정보가 없다.
+     *   3. 결합 점수가 경보 문턱(80)을 넘고, 조각 최댓값보다 [FUSE_GAIN] 이상 높아야 한다.
+     *      조각 하나가 이미 70 인데 결합이 85 면 그 15 는 결합의 공이 아니다.
+     *
+     * 이 조건에서 남는 것은 "각각은 예보 이하인데 이어 보면 경보"뿐이다. 그것이 이 단계가
+     * 존재하는 유일한 이유다. 결합 텍스트 형식(`[문자] …\n[통화] …`)은 문자 어댑터 학습셋의
+     * 결합 표본과 같다 — `Voice-Detection/src/build_sms_set.py`. 카카오톡도 `[문자]`로 적는다.
      */
     private suspend fun rescoreWithContext(event: EventEntity) {
         val text = event.text ?: return
+        // 판정에 실패한 조각은 재료가 아니다 — 모델이 못 본 것을 결합에서 다시 보게 할 이유가 없다.
+        if (event.status != EventStatus.ANALYZED || event.riskSignal.isConfident()) return
         val others = eventDao.findOtherChannelsBetween(
             event.channel, event.capturedAt - WINDOW_MILLIS, event.capturedAt + WINDOW_MILLIS,
-        ).filter { it.id != event.id }
+        ).filter { it.id != event.id && !it.riskSignal.isConfident() && it.status == EventStatus.ANALYZED }
         if (others.isEmpty()) return
 
         val pieces = (others + event).sortedBy { it.capturedAt }
@@ -86,13 +104,23 @@ class DetectionPipeline(
             Log.e(TAG, "세션 재판정 실패 — 조각 판정은 그대로 둔다", e)
             return
         }
-        val fusedRisk = verdict.risk ?: when (verdict.riskSignal) {
-            // 키워드 대역은 위험도를 주지 않는다. 등급만으로 문턱 위·아래를 정한다.
-            RiskSignal.HIGH, RiskSignal.HIGH_UNBACKED -> 100.0
-            else -> 0.0
-        }
-        val fused = sessionEngine.fuse(pieces, fusedRisk)
-        Log.i(TAG, "세션 재판정 ${pieces.size}조각 → ${"%.1f".format(fusedRisk)} ${if (fused) "격상" else "유지"}")
+        // 키워드 대역은 위험도를 주지 않는다. 결합 판정은 모델이 있을 때만 뜻이 있으므로 건너뛴다.
+        val fusedRisk = verdict.risk ?: return
+        val best = pieces.maxOf { it.risk ?: 0.0 }
+        val fused = fusedRisk >= FUSE_THRESHOLD && fusedRisk - best >= FUSE_GAIN &&
+            sessionEngine.fuse(pieces, fusedRisk)
+        Log.i(TAG, "세션 재판정 ${pieces.size}조각 (최대 ${"%.1f".format(best)}) → " +
+            "${"%.1f".format(fusedRisk)} ${if (fused) "격상" else "유지"}")
+    }
+
+    /** 단독으로 이미 알림·세션을 만드는 등급. 이들은 재판정의 재료가 아니라 결과다. */
+    private fun RiskSignal.isConfident() = this == RiskSignal.HIGH || this == RiskSignal.HIGH_UNBACKED
+
+    private companion object {
+        /** 앱의 경보 문턱과 같다. 결합으로 격상시키려면 그 자체가 경보 수준이어야 한다. */
+        const val FUSE_THRESHOLD = 80.0
+        /** 조각 최댓값 대비 결합이 이만큼은 올라야 "이어 봤기 때문"이라고 말할 수 있다. */
+        const val FUSE_GAIN = 30.0
     }
 
     private suspend fun resolveVerdict(captured: CapturedEvent): Pair<EventStatus, ClassificationVerdict> {
