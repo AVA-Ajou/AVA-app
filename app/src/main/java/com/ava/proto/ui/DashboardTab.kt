@@ -13,11 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -214,7 +209,7 @@ private fun StatusHero(
                         modifier = Modifier.size(78.dp),
                     )
                 } else {
-                    IconBubble(Icons.Filled.Warning, error, size = 60)
+                    IconBubble(AppIcons.warning, error, size = 60)
                 }
             }
 
@@ -222,7 +217,7 @@ private fun StatusHero(
                 Spacer(Modifier.height(18.dp))
                 TonalButton(
                     text = "지금 스캔",
-                    icon = Icons.Filled.Refresh,
+                    icon = AppIcons.refresh,
                     onClick = onScanNow,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -240,7 +235,7 @@ private fun SetupBanner(onOpenSettings: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
-            IconBubble(Icons.Filled.Settings, MaterialTheme.colorScheme.primary, size = 40)
+            IconBubble(AppIcons.settingsFilled, MaterialTheme.colorScheme.primary, size = 40)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     "채널 연결이 필요해요",
@@ -254,9 +249,10 @@ private fun SetupBanner(onOpenSettings: () -> Unit) {
                 )
             }
             Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                AppIcons.chevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(22.dp),
             )
         }
     }

@@ -1,9 +1,6 @@
 package com.ava.proto.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,15 +44,16 @@ internal fun channelColor(channel: Channel): Color {
 }
 
 /**
- * 카카오톡만 직접 그린 말풍선을 쓴다(`ic_channel_kakao.xml`). 기본 아이콘 세트의 종이비행기는
- * "보내기"라서 아무 메신저로나 읽혔다.
+ * 통화·문자는 [AppIcons](Material Symbols Rounded), 카카오톡만 직접 그린 말풍선이다
+ * (`ic_channel_kakao.xml`). 카카오톡을 알아보게 하는 것은 왼쪽 아래로 흐르는 꼬리가 달린
+ * 둥근 말풍선 실루엣이라 기호 세트의 말풍선으로는 대신할 수 없다.
  *
- * `@Composable` 인 이유는 벡터 리소스를 읽기 때문이다 — 호출부가 전부 컴포저블 안이라
- * 부담이 없다.
+ * 문자에 편지봉투를 쓰지 않는다 — 봉투는 이메일이고, 문자는 말풍선이다. 두 말풍선을
+ * 점(문자)과 꼬리 모양(카카오톡), 그리고 색으로 가른다.
  */
 @Composable
 internal fun channelIcon(channel: Channel): ImageVector = when (channel) {
-    Channel.CALL -> Icons.Filled.Call
-    Channel.SMS -> Icons.Filled.Email
+    Channel.CALL -> AppIcons.call
+    Channel.SMS -> AppIcons.sms
     Channel.KAKAO -> ImageVector.vectorResource(R.drawable.ic_channel_kakao)
 }

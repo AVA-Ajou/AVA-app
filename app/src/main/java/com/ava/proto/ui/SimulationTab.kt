@@ -3,8 +3,6 @@ package com.ava.proto.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -106,7 +104,7 @@ fun SimulationTab(
                 CleanCard {
                     Column(modifier = Modifier.padding(vertical = 5.dp)) {
                         SimulationRow(
-                            icon = Icons.Filled.Refresh,
+                            icon = AppIcons.refresh,
                             tint = channelColor(Channel.KAKAO),
                             title = "카카오톡 순환",
                             description = "정상 ↔ 피싱 메시지를 번갈아 발송",
@@ -115,7 +113,7 @@ fun SimulationTab(
                             onRun = onStartAutoTestKakao,
                         )
                         SimulationRow(
-                            icon = Icons.Filled.Refresh,
+                            icon = AppIcons.refresh,
                             tint = channelColor(Channel.SMS),
                             title = "문자 순환",
                             description = "정상 ↔ 피싱 문자를 번갈아 발송",

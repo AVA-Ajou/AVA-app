@@ -16,8 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -179,7 +177,9 @@ internal fun Chip(text: String, tint: Color, strong: Boolean = false) {
         text,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
-        color = if (strong) MaterialTheme.colorScheme.onPrimary else tint,
+        // 채운 칩의 글자는 `onError` 다. 지금 채워 쓰는 색이 빨강뿐이라 그 쌍이 맞고,
+        // 다크에서는 어두운 빨강 글자가 연한 빨강 판 위에 놓여 흰 글자보다 대비가 높다.
+        color = if (strong) MaterialTheme.colorScheme.onError else tint,
         modifier = Modifier
             .background(if (strong) tint else tint.copy(alpha = 0.12f), PillShape)
             .padding(horizontal = 9.dp, vertical = 4.dp),
@@ -443,7 +443,7 @@ internal fun ErrorBanner(text: String) {
             .padding(16.dp),
     ) {
         Icon(
-            Icons.Filled.Warning,
+            AppIcons.warning,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.error,
             modifier = Modifier.size(20.dp),

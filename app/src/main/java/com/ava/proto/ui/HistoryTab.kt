@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
@@ -143,10 +142,10 @@ private fun GuideToggle(open: Boolean, onToggle: () -> Unit) {
             .padding(start = 10.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
     ) {
         Icon(
-            Icons.Filled.Info,
+            AppIcons.info,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-            modifier = Modifier.size(15.dp),
+            modifier = Modifier.size(16.dp),
         )
         Text(
             "등급 안내",
@@ -247,8 +246,13 @@ internal fun EventCard(event: EventEntity, multiChannel: Boolean = false) {
                     )
                     Text(
                         buildString {
-                            append(event.channel.label)
-                            append(" · ")
+                            // 제목이 이미 채널 이름이면(상대방을 모르는 통화) 부제에서 한 번
+                            // 더 적지 않는다 — 같은 단어가 두 줄 연속으로 오면 그만큼 파일명이
+                            // 잘린다.
+                            if (event.counterpart != null) {
+                                append(event.channel.label)
+                                append(" · ")
+                            }
                             append(formatTime(event.capturedAt))
                             if (event.channel == Channel.CALL) {
                                 append(" · ")

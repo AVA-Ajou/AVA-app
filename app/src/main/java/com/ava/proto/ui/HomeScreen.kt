@@ -4,13 +4,9 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,15 +22,23 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /** 하단 탭. 화면이 늘어나도 진입점은 이 enum 하나로 유지한다. */
-private enum class HomeTab(val label: String, val icon: ImageVector) {
-    DASHBOARD("홈", Icons.Filled.Home),
-    HISTORY("기록", Icons.AutoMirrored.Filled.List),
-    SIMULATION("시뮬레이션", Icons.Filled.PlayArrow),
-    SETTINGS("설정", Icons.Filled.Settings),
+private enum class HomeTab(val label: String) {
+    DASHBOARD("홈"),
+    HISTORY("기록"),
+    SIMULATION("시뮬레이션"),
+    SETTINGS("설정");
+
+    /** 선택된 탭은 채운 모양, 나머지는 선 모양 — 색 없이도 형태로 갈린다. */
+    @Composable
+    fun icon(selected: Boolean) = when (this) {
+        DASHBOARD -> if (selected) AppIcons.homeFilled else AppIcons.home
+        HISTORY -> if (selected) AppIcons.historyFilled else AppIcons.history
+        SIMULATION -> if (selected) AppIcons.labFilled else AppIcons.lab
+        SETTINGS -> if (selected) AppIcons.settingsFilled else AppIcons.settings
+    }
 }
 
 /**
@@ -88,7 +92,13 @@ fun HomeScreen(
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { selectedTab = tab },
-                            icon = { Icon(tab.icon, contentDescription = null) },
+                            icon = {
+                                Icon(
+                                    tab.icon(selected = selectedTab == tab),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            },
                             label = { Text(tab.label, style = MaterialTheme.typography.labelSmall) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,

@@ -2,21 +2,33 @@ package com.ava.proto.ui
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
+import com.ava.proto.R
 
 /**
- * 앱 전체가 쓰는 글꼴.
+ * 앱 전체가 쓰는 글꼴 — Pretendard (SIL OFL, `docs/licenses/PRETENDARD_LICENSE.txt`).
  *
- * **여기 한 줄만 바꾸면 앱 전체 글꼴이 갈린다.** 컴포저블마다 `fontFamily` 를 지정하지 않는
+ * **여기만 바꾸면 앱 전체 글꼴이 갈린다.** 컴포저블마다 `fontFamily` 를 지정하지 않는
  * 이유가 그것이다 — 화면이 늘어난 뒤에 글꼴을 바꾸려면 전부 찾아다녀야 한다.
  *
- * 지금은 시스템 기본(안드로이드는 Roboto + 한글은 본고딕 대체)이다. Pretendard 같은 서체로
- * 맞추려면 `res/font/` 에 파일을 넣고 `FontFamily(Font(R.font.…))` 로 바꾼다.
+ * 시스템 기본(Roboto + 본고딕 대체)을 버린 이유는 두 글꼴이 **한 줄 안에서 섞이기** 때문이다.
+ * `0507-1234-5678` 같은 숫자와 그 옆의 한글이 서로 다른 굵기·높이로 놓여, 어떤 앱을 봐도
+ * 같은 "기본 안드로이드 앱" 인상을 준다. Pretendard 는 라틴·숫자·한글을 한 벌로 그려
+ * 그 이음새가 없다.
+ *
+ * 가변 폰트가 아니라 정적 4벌을 넣었다. 굵기를 넷만 쓰기도 하고, 정적 파일이 구형 기기와
+ * 에뮬레이터에서 렌더링이 더 고르다.
  */
-val AvamonFont: FontFamily = FontFamily.Default
+val AvamonFont: FontFamily = FontFamily(
+    Font(R.font.pretendard_regular, FontWeight.Normal),
+    Font(R.font.pretendard_medium, FontWeight.Medium),
+    Font(R.font.pretendard_semibold, FontWeight.SemiBold),
+    Font(R.font.pretendard_bold, FontWeight.Bold),
+)
 
 /**
  * 위계는 **크기 차이보다 굵기와 색으로** 낸다.
