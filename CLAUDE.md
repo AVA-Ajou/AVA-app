@@ -280,9 +280,12 @@ adb push 통화녹음_테스트.txt /sdcard/Recordings/
 - `docs/capture-channels.md` — 채널별 캡처 방식, 권한 모델과 배제 근거, 삼성 파일명 패턴, SAF 경로 변환
 - `docs/external-apis.md` — 서버 호출 지점(`/analyze`·`/transcribe`)과 계층별 실패 처리 계약
 - `README.md` — 데모 시연 절차와 기기 설정 안내
-- `tools/mascot/gen.py` — 마스코트 포즈 벡터 생성기. `res/drawable/ic_avamon_{guard,alert,sleep,search,wave}.xml`
-  은 이 스크립트의 출력이므로 **XML을 손으로 고치지 말고 생성기를 고친 뒤 다시 뽑는다**
-  (`python3 tools/mascot/gen.py app/src/main/res/drawable`)
+- `tools/mascot/gen.py` — 마스코트 포즈 벡터 생성기. 팀이 만든 원본 PNG(`tools/mascot/reference.png`)에서
+  실루엣을 추출하고 이목구비·방패 위치와 색을 픽셀로 재어 그린다.
+  `res/drawable/ic_avamon_{guard,alert,sleep,search,wave}.xml` 은 이 스크립트의 출력이므로
+  **XML을 손으로 고치지 말고 생성기를 고친 뒤 다시 뽑는다**
+  (`python3 tools/mascot/gen.py app/src/main/res/drawable`). `tools/mascot/compare.py` 가 원본과
+  겹쳐 비교한 그림(`compare.png`)과 실루엣 IoU를 낸다 — 0.92 이상을 유지할 것
 
 **다른 저장소** — 판정을 실제로 하는 쪽이다. 앱을 고치기 전에 읽을 것.
 
