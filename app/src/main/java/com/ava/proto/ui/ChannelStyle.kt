@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
@@ -81,31 +80,19 @@ internal fun channelIcon(channel: Channel): ImageVector = when (channel) {
  */
 @Composable
 internal fun ChannelTile(channel: Channel, size: Int = 44, active: Boolean = true) {
-    // 위가 밝고 아래가 진한 두 톤. 단색 평면은 마스코트의 젤리 질감 옆에서 딱딱해 보였다.
-    val (top, bottom, glyph) = when {
-        !active -> Triple(
-            MaterialTheme.colorScheme.surfaceContainerHigh,
-            MaterialTheme.colorScheme.surfaceContainerHighest,
-            MaterialTheme.colorScheme.outline,
-        )
-        channel == Channel.CALL -> Triple(Color(0xFF5BDC8A), Color(0xFF22B45C), Color(0xFFFFFFFF))
-        channel == Channel.SMS -> Triple(Color(0xFF5C97FF), Color(0xFF2A6CEB), Color(0xFFFFFFFF))
-        else -> Triple(Color(0xFFFFEE4D), Color(0xFFF9D000), Color(0xFF3C1E1E))
+    // 단색 평면. 그라데이션·광택을 넣어 봤지만 앱 아이콘보다 스티커처럼 보였다 — 통통함은
+    // 모서리 반경과 글리프의 두께로 내고, 색은 하나로 둔다.
+    val (tile, glyph) = when {
+        !active -> MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.outline
+        channel == Channel.CALL -> Color(0xFF34C86A) to Color(0xFFFFFFFF)
+        channel == Channel.SMS -> Color(0xFF3A7BFF) to Color(0xFFFFFFFF)
+        else -> Color(0xFFFEE500) to Color(0xFF3C1E1E)
     }
-    val shape = RoundedCornerShape((size * 0.36f).dp)
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(size.dp)
-            .background(Brush.verticalGradient(listOf(top, bottom)), shape)
-            // 위쪽 광택 한 줄 — 유리처럼 보이지 않을 만큼만.
-            .background(
-                Brush.verticalGradient(
-                    0f to Color.White.copy(alpha = 0.22f),
-                    0.45f to Color.Transparent,
-                ),
-                shape,
-            ),
+            .background(tile, RoundedCornerShape((size * 0.36f).dp)),
     ) {
         Icon(
             channelIcon(channel),
