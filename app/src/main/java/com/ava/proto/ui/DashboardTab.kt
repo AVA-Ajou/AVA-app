@@ -201,16 +201,20 @@ private fun StatusHero(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.width(14.dp))
-                if (safe) {
-                    Image(
-                        painterResource(R.drawable.ic_avamon_mascot),
-                        contentDescription = null,
-                        modifier = Modifier.size(78.dp),
-                    )
-                } else {
-                    IconBubble(AppIcons.warning, error, size = 60)
-                }
+                Spacer(Modifier.width(10.dp))
+                // 포즈가 상태를 말한다 — 처음이면 인사, 평온하면 방패, 위험하면 경보판.
+                // 세 그림의 실루엣이 같아서 상태가 바뀌어도 "다른 캐릭터"로 읽히지 않는다.
+                Image(
+                    painterResource(
+                        when {
+                            neverSeen -> R.drawable.ic_avamon_wave
+                            safe -> R.drawable.ic_avamon_guard
+                            else -> R.drawable.ic_avamon_alert
+                        },
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.size(96.dp),
+                )
             }
 
             if (scanEnabled) {

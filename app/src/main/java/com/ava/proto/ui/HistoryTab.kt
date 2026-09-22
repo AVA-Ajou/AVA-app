@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ava.proto.R
 import com.ava.proto.capture.Channel
 import com.ava.proto.data.EventEntity
 import com.ava.proto.data.RiskSignal
@@ -95,23 +96,11 @@ fun HistoryTab(
         }
 
         if (events.isEmpty()) {
-            CleanCard {
-                Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        "아직 기록이 없어요",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        "시뮬레이션 탭에서 신호를 만들어볼 수 있어요",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            EmptyState(
+                image = R.drawable.ic_avamon_sleep,
+                title = "아직 기록이 없어요",
+                detail = "시뮬레이션 탭에서 신호를 만들어볼 수 있어요",
+            )
         }
 
         // 딱지는 **합류한 쪽에만** 붙인다. 세션을 연 첫 연락은 그때까지 채널이 하나뿐이라

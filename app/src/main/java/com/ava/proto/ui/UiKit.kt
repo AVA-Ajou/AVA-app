@@ -1,5 +1,7 @@
 package com.ava.proto.ui
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,9 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.ava.proto.R
 import com.ava.proto.data.RiskSignal
 
 /**
@@ -388,17 +393,66 @@ internal fun KeyValueRow(key: String, value: String, valueColor: Color = Materia
 
 // ── 상태 패널 ─────────────────────────────────────────────────────────────────
 
-/** 진행 중 상태는 취소 가능 여부만 다르므로 한 컴포저블로 합쳤다. */
+/**
+ * 빈 화면. 마스코트가 자고 있는 그림 하나로 "아직 아무 일도 없다"를 말한다 — 글자만
+ * 있는 빈 카드는 오류 화면과 구분되지 않는다.
+ */
+@Composable
+internal fun EmptyState(@DrawableRes image: Int, title: String, detail: String) {
+    CleanCard {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Image(
+                painterResource(image),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(120.dp)
+                    .padding(bottom = 8.dp),
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+/**
+ * 진행 중 상태는 취소 가능 여부만 다르므로 한 컴포저블로 합쳤다. 돋보기를 든 마스코트가
+ * 왼쪽에 서서 "찾는 중"임을 말한다 — 막대 하나만 있으면 무엇이 진행되는지 읽히지 않는다.
+ */
 @Composable
 internal fun ProgressPanel(
     text: String,
     onCancel: (() -> Unit)? = null,
 ) {
     CleanCard {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(18.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 12.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
         ) {
+            Image(
+                painterResource(R.drawable.ic_avamon_search),
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f),
+            ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -427,6 +481,7 @@ internal fun ProgressPanel(
                     Spacer(Modifier.width(12.dp))
                     CompactButton("중단", onClick = onCancel)
                 }
+            }
             }
         }
     }
