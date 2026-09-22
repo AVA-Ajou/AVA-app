@@ -30,6 +30,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ava.proto.capture.RecordingFolder
 import com.ava.proto.capture.TargetPackages
 import com.ava.proto.ui.HomeScreen
+import com.ava.proto.ui.OnboardingPrefs
+import com.ava.proto.ui.OnboardingScreen
 import com.ava.proto.ui.HomeViewModel
 import com.ava.proto.ui.ProtoTheme
 
@@ -76,6 +78,25 @@ class MainActivity : ComponentActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
+                }
+
+                // 온보딩은 Activity 가 아니라 여기서 상태 하나로 가린다 — 별도 Activity 를
+                // 두면 진입점이 둘이 되고, 알림을 눌러 들어오는 경로에서도 끼어든다.
+                var onboardingDone by remember { mutableStateOf(OnboardingPrefs.isDone(context)) }
+                if (!onboardingDone) {
+                    OnboardingScreen(
+                        notificationAccessGranted = notificationAccessGranted,
+                        recordingFolderUri = folderUri,
+                        onOpenNotificationAccessSettings = {
+                            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        },
+                        onConnectFolder = { folderPicker.launch(null) },
+                        onFinish = {
+                            OnboardingPrefs.markDone(context)
+                            onboardingDone = true
+                        },
+                    )
+                    return@ProtoTheme
                 }
 
                 HomeScreen(
