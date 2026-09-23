@@ -22,6 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /** 하단 탭. 화면이 늘어나도 진입점은 이 enum 하나로 유지한다. */
@@ -75,6 +76,9 @@ fun HomeScreen(
 ) {
     // 화면 회전이나 프로세스 재생성 후에도 보던 탭에 남아 있어야 데모 흐름이 끊기지 않는다.
     var selectedTab by rememberSaveable { mutableStateOf(HomeTab.DASHBOARD) }
+    val context = LocalContext.current
+    var simulationEnabled by rememberSaveable { mutableStateOf(DeveloperPrefs.simulationEnabled(context)) }
+    val tabs = HomeTab.entries.filter { it != HomeTab.SIMULATION || simulationEnabled }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -88,7 +92,7 @@ fun HomeScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                     tonalElevation = 0.dp,
                 ) {
-                    HomeTab.entries.forEach { tab ->
+                    tabs.forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { selectedTab = tab },
@@ -159,6 +163,11 @@ fun HomeScreen(
                     onConnectFolder = onConnectFolder,
                     onOpenNotificationAccessSettings = onOpenNotificationAccessSettings,
                     onScanNow = onScanNow,
+                    simulationEnabled = simulationEnabled,
+                    onToggleSimulation = { enabled ->
+                        DeveloperPrefs.setSimulationEnabled(context, enabled)
+                        simulationEnabled = enabled
+                    },
                 )
             }
         }

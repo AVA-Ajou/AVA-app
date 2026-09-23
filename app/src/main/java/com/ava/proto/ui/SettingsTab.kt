@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,8 @@ fun SettingsTab(
     onConnectFolder: () -> Unit,
     onOpenNotificationAccessSettings: () -> Unit,
     onScanNow: () -> Unit,
+    simulationEnabled: Boolean = false,
+    onToggleSimulation: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -125,6 +129,27 @@ fun SettingsTab(
                     }
                     KeyValueRow("앱 버전", BuildConfig.VERSION_NAME)
                 }
+            }
+        }
+
+        // 개발 도구. 시뮬레이션 탭은 가짜 신호를 넣는 화면이라 기본으로 숨긴다 — 켜면 하단 탭에 나타난다.
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionHeader("개발자")
+            CleanCard {
+                ListRow(
+                    title = "시뮬레이션 탭",
+                    subtitle = "데모 신호 발생 · 오탐 검증 도구",
+                    modifier = Modifier.padding(vertical = 5.dp),
+                    trailing = {
+                        Switch(
+                            checked = simulationEnabled,
+                            onCheckedChange = onToggleSimulation,
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    },
+                )
             }
         }
     }

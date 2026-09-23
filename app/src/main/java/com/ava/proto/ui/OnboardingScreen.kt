@@ -57,6 +57,24 @@ object OnboardingPrefs {
     }
 }
 
+/**
+ * 시뮬레이션 탭 표시 여부. **기본은 숨김.**
+ *
+ * 그 탭은 파이프라인에 가짜 신호를 넣는 개발 도구라 사용자용 화면이 아니다 — 하단 탭 넷 중
+ * 하나가 데모면 앱 전체가 시제품으로 읽힌다. 시연·검증할 때만 설정에서 켠다.
+ */
+object DeveloperPrefs {
+    private const val FILE = "developer"
+    private const val KEY_SIMULATION = "simulation_tab"
+
+    fun simulationEnabled(context: Context): Boolean =
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).getBoolean(KEY_SIMULATION, false)
+
+    fun setSimulationEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().putBoolean(KEY_SIMULATION, enabled).apply()
+    }
+}
+
 /** 세 단계 + 완료. 순서는 앱이 채널을 켜는 데 필요한 순서다 — 권한 하나가 채널 둘을 연다. */
 private enum class Step { WELCOME, MESSAGING, CALL, DONE }
 

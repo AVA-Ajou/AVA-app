@@ -147,6 +147,7 @@ adb logcat -s DetectionPipeline BackendClassification ServerTranscriber \
 **자동화된 테스트가 없다.** `test`/`androidTest` 소스 세트도, 테스트 의존성도 없다
 (`./gradlew test`는 아무것도 실행하지 않고 성공한다). 검증은 기기에서 앱 내 데모 버튼으로 한다:
 
+0. 설정 탭 → 개발자 → **시뮬레이션 탭** 스위치를 켠다 (기본 숨김. 사용자용 화면이 아니다)
 1. "알림 접근 설정 열기" → AVA Proto 허용 (카톡·SMS 채널 필수)
 2. "녹음 폴더 연결" → SAF 폴더 선택 (통화 채널 필수).
    **최상위가 아니라 하위 폴더를 고를 것** — 안드로이드가 루트 접근을 막는다
